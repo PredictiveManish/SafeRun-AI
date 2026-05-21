@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./saferun.db
+      - SANDBOX_IMAGE=saferun-sandbox:latest
+      - SARVAM_API_KEY=${SARVAM_API_KEY:-}
+    volumes:
+      - ./saferun.db:/app/saferun.db
+      - /var/run/docker.sock:/var/run/docker.sock   # Needed to spawn sandbox containers
+      - ./reports:/app/reports
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped

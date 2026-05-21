@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+sqlalchemy
+python-dotenv
+docker
+pyyaml
+psutil
+requests
+streamlit
+pytest
+httpx
