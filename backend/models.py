@@ -1,10 +1,11 @@
 """
 SQLAlchemy ORM models for audit storage.
 """
+from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+
 
 Base = declarative_base()
 
@@ -21,9 +22,9 @@ class ExecutionRecord(Base):
     warnings = Column(Text, default="")  # JSON string
     stdout = Column(Text, default="")
     exit_code = Column(Integer, default=True)
-    execution_time = Column(float, default=0.0)
+    execution_time = Column(Float, default=0.0)
     status = Column(String(50), nullable=False)
-    created_at = Column(datetime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {

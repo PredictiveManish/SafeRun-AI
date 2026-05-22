@@ -1,0 +1,46 @@
+max_execution_time_seconds: 10
+max_memory_mb: 256
+max_cpu_cores: 1
+max_code_size_kb: 100
+network_enabled: false
+filesystem_write_enabled: false
+allowed_imports:
+  - math
+  - random
+  - datetime
+  - json
+  - re
+  - collections
+  - itertools
+  - statistics
+blocked_imports:
+  - os
+  - subprocess
+  - socket
+  - requests
+  - urllib
+  - urllib3
+  - shutil
+  - importlib
+  - pickle
+  - ctypes
+  - sys
+  - builtins
+blocked_calls:
+  - eval
+  - exec
+  - compile
+  - __import__
+  - breakpoint
+  - subprocess.run
+  - subprocess.Popen
+  - subprocess.call
+  - os.system
+  - os.popen
+  - os.remove
+  - os.unlink
+  - os.rmdir
+  - os.removedirs
+  - shutil.rmtree
+  - shutil.move
+  - open
