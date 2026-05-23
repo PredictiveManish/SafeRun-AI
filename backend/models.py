@@ -1,6 +1,7 @@
 """
 SQLAlchemy ORM models for audit storage.
 """
+
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text

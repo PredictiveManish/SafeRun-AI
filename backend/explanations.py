@@ -31,7 +31,9 @@ class ExplanationGenerator:
         """Return explanation for scan results."""
         if self.sarvam_enabled:
             try:
-                return self._sarvam_scan_explanation(code, scan_result, policy_violations)
+                return self._sarvam_scan_explanation(
+                    code, scan_result, policy_violations
+                )
             except Exception as e:
                 logger.warning(f"Sarvam AI failed, falling back: {e}")
                 return self._local_scan_explanation(scan_result, policy_violations)
@@ -48,23 +50,31 @@ class ExplanationGenerator:
         """Return explanation for execution results."""
         if self.sarvam_enabled:
             try:
-                return self._sarvam_execution_explanation(code, scan_result, exec_result, policy_violations)
+                return self._sarvam_execution_explanation(
+                    code, scan_result, exec_result, policy_violations
+                )
             except Exception as e:
                 logger.warning(f"Sarvam AI failed, falling back: {e}")
-                return self._local_execution_explanation(scan_result, exec_result, policy_violations)
+                return self._local_execution_explanation(
+                    scan_result, exec_result, policy_violations
+                )
         else:
-            return self._local_execution_explanation(scan_result, exec_result, policy_violations)
+            return self._local_execution_explanation(
+                scan_result, exec_result, policy_violations
+            )
 
     # --- Sarvam AI integration ---
-    def _sarvam_scan_explanation(self, code: str, scan_result: ScanResult, violations: List[str]) -> str:
+    def _sarvam_scan_explanation(
+        self, code: str, scan_result: ScanResult, violations: List[str]
+    ) -> str:
         prompt = f"""
 You are a security expert. Explain the following code scan results in a short, helpful paragraph for a developer.
 
 Risk level: {scan_result.risk_level}
 Blocked: {scan_result.blocked}
-Warnings: {', '.join(scan_result.warnings)}
-Detected patterns: {', '.join(scan_result.detected_patterns)}
-Policy violations: {', '.join(violations)}
+Warnings: {", ".join(scan_result.warnings)}
+Detected patterns: {", ".join(scan_result.detected_patterns)}
+Policy violations: {", ".join(violations)}
 
 Code snippet (first 500 chars):
 {code[:500]}
@@ -73,7 +83,13 @@ Give a concise explanation of the risks and why it was blocked or warned.
 """
         return self._call_sarvam(prompt)
 
-    def _sarvam_execution_explanation(self, code: str, scan_result: ScanResult, exec_result: ExecutionResult, violations: List[str]) -> str:
+    def _sarvam_execution_explanation(
+        self,
+        code: str,
+        scan_result: ScanResult,
+        exec_result: ExecutionResult,
+        violations: List[str],
+    ) -> str:
         prompt = f"""
 You are a security expert. Explain the following sandbox execution result for AI-generated code.
 
@@ -82,8 +98,8 @@ Execution status: {exec_result.status}
 Exit code: {exec_result.exit_code}
 Stdout: {exec_result.stdout[:500]}
 Stderr: {exec_result.stderr[:500]}
-Warnings: {', '.join(scan_result.warnings)}
-Policy violations: {', '.join(violations)}
+Warnings: {", ".join(scan_result.warnings)}
+Policy violations: {", ".join(violations)}
 
 Provide debugging suggestions and security insights.
 """
@@ -110,7 +126,9 @@ Provide debugging suggestions and security insights.
         return data["choices"][0]["message"]["content"]
 
     # --- Local fallback explanations ---
-    def _local_scan_explanation(self, scan_result: ScanResult, violations: List[str]) -> str:
+    def _local_scan_explanation(
+        self, scan_result: ScanResult, violations: List[str]
+    ) -> str:
         if scan_result.blocked:
             return f"❌ Code blocked due to high-risk patterns: {', '.join(scan_result.detected_patterns[:3])}. Policy violations: {', '.join(violations[:3])}. Execution not allowed."
         elif scan_result.risk_level == "HIGH":
@@ -120,7 +138,9 @@ Provide debugging suggestions and security insights.
         else:
             return "✅ Code appears safe based on static analysis."
 
-    def _local_execution_explanation(self, scan_result: ScanResult, exec_result: ExecutionResult) -> str:
+    def _local_execution_explanation(
+        self, scan_result: ScanResult, exec_result: ExecutionResult
+    ) -> str:
         if exec_result.status == "success":
             return f"✅ Code executed successfully in sandbox (exit code {exec_result.exit_code}) in {exec_result.execution_time:.2f}s."
         elif exec_result.status == "timeout":

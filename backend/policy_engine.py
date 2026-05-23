@@ -26,11 +26,26 @@ class PolicyEngine:
             "network_enabled": False,
             "filesystem_write_enabled": False,
             "allowed_imports": ["math", "random", "datetime", "json", "re"],
-            "blocked_imports": ["os", "subprocess", "socket", "requests", "urllib", "shutil", "importlib", "pickle"],
+            "blocked_imports": [
+                "os",
+                "subprocess",
+                "socket",
+                "requests",
+                "urllib",
+                "shutil",
+                "importlib",
+                "pickle",
+            ],
             "blocked_calls": [
-                "eval", "exec", "compile", "__import__",
-                "subprocess.run", "subprocess.Popen", "os.system",
-                "os.remove", "shutil.rmtree"
+                "eval",
+                "exec",
+                "compile",
+                "__import__",
+                "subprocess.run",
+                "subprocess.Popen",
+                "os.system",
+                "os.remove",
+                "shutil.rmtree",
             ],
         }
         if not self.policy_path.exists():
@@ -58,7 +73,9 @@ class PolicyEngine:
         # Code size check
         code_size_kb = len(code.encode("utf-8")) / 1024
         if code_size_kb > self.policy["max_code_size_kb"]:
-            violations.append(f"Code size exceeds policy limit: {code_size_kb:.1f} KB > {self.policy['max_code_size_kb']} KB")
+            violations.append(
+                f"Code size exceeds policy limit: {code_size_kb:.1f} KB > {self.policy['max_code_size_kb']} KB"
+            )
 
         # Blocked imports from scanner patterns
         for pattern in scan_result.detected_patterns:
@@ -77,14 +94,22 @@ class PolicyEngine:
 
         # Check network policy
         if not self.policy["network_enabled"] and any(
-            pat.startswith("import_") and pat in ["import_socket", "import_requests", "import_urllib"]
+            pat.startswith("import_")
+            and pat in ["import_socket", "import_requests", "import_urllib"]
             for pat in scan_result.detected_patterns
         ):
-            violations.append("Network access is disabled by policy but code imports networking module")
+            violations.append(
+                "Network access is disabled by policy but code imports networking module"
+            )
 
         # Check filesystem write policy
-        if not self.policy["filesystem_write_enabled"] and "file_write" in scan_result.detected_patterns:
-            violations.append("Filesystem write access is disabled by policy but code attempts to write files")
+        if (
+            not self.policy["filesystem_write_enabled"]
+            and "file_write" in scan_result.detected_patterns
+        ):
+            violations.append(
+                "Filesystem write access is disabled by policy but code attempts to write files"
+            )
 
         return violations
 

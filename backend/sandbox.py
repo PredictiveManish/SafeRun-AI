@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionResult:
     """Result of sandbox execution."""
+
     status: str  # success, timeout, error, killed
     stdout: str
     stderr: str
@@ -55,7 +56,9 @@ class SandboxExecutor:
             self.docker_client.images.get(self.image_name)
             return True
         except ImageNotFound:
-            logger.error(f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} .")
+            logger.error(
+                f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} ."
+            )
             return False
         except APIError as e:
             logger.error(f"Docker API error: {e}")
@@ -149,7 +152,9 @@ class SandboxExecutor:
                     auto_remove=auto_remove,
                     detach=True,
                     # Mount the code directory
-                    volumes={tmpdir: {"bind": mount_path, "mode": "rw" if mount_rw else "ro"}},
+                    volumes={
+                        tmpdir: {"bind": mount_path, "mode": "rw" if mount_rw else "ro"}
+                    },
                     cap_drop=cap_drop,
                     security_opt=security_opt,
                     # Extra hardening
@@ -166,15 +171,21 @@ class SandboxExecutor:
                 exit_code = result["StatusCode"]
 
                 # Get logs
-                logs = container.logs(stdout=True, stderr=True, timestamps=False).decode("utf-8", errors="replace")
+                logs = container.logs(
+                    stdout=True, stderr=True, timestamps=False
+                ).decode("utf-8", errors="replace")
                 # Split stdout/stderr? Docker combines. We can separate but for simplicity combine.
                 # Better: we can't easily separate, but we can store entire logs as stdout, stderr empty.
                 # For better UX, we attempt to split by checking for stderr marker? Not reliable.
                 # We'll put combined in stdout, stderr will have errors if any.
                 # Actually we can use container.logs(stdout=True, stderr=False) separately but that's two calls.
                 # Let's do two calls to get separated.
-                stdout_logs = container.logs(stdout=True, stderr=False).decode("utf-8", errors="replace")
-                stderr_logs = container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace")
+                stdout_logs = container.logs(stdout=True, stderr=False).decode(
+                    "utf-8", errors="replace"
+                )
+                stderr_logs = container.logs(stdout=False, stderr=True).decode(
+                    "utf-8", errors="replace"
+                )
 
                 execution_time = time.time() - start_time
                 status = "success" if exit_code == 0 else "error"

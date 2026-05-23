@@ -19,7 +19,9 @@ st.set_page_config(
 
 # Sidebar
 with st.sidebar:
-    st.image("https://via.placeholder.com/150x50?text=SafeRun+AI", use_column_width=True)  # placeholder
+    st.image(
+        "https://via.placeholder.com/150x50?text=SafeRun+AI", use_column_width=True
+    )  # placeholder
     st.markdown("## 🧠 SafeRun AI")
     st.markdown("**Secure sandbox execution for AI-generated code**")
     st.markdown("---")
@@ -32,7 +34,9 @@ with st.sidebar:
             st.error("Backend unreachable")
     except:
         st.error("Backend not running")
-    st.markdown("Default policy: **restrictive** (no network, no writes, limited resources)")
+    st.markdown(
+        "Default policy: **restrictive** (no network, no writes, limited resources)"
+    )
     st.markdown("---")
     st.markdown("### 🛡️ Safety Controls")
     st.markdown("- AST scanner")
@@ -41,14 +45,16 @@ with st.sidebar:
     st.markdown("- Read-only FS")
     st.markdown("- Resource limits")
     st.markdown("---")
-    st.markdown("[GitHub](https://github.com/yourusername/saferun-ai) | [Report Issue](https://github.com/yourusername/saferun-ai/issues)")
+    st.markdown(
+        "[GitHub](https://github.com/yourusername/saferun-ai) | [Report Issue](https://github.com/yourusername/saferun-ai/issues)"
+    )
 
 # Main area
 st.title("🛡️ SafeRun AI")
 st.subheader("Run AI-generated Python code in a secure sandbox")
 
 # Code editor
-code_default = '''# Example safe code
+code_default = """# Example safe code
 def fibonacci(n):
     a, b = 0, 1
     for _ in range(n):
@@ -56,7 +62,7 @@ def fibonacci(n):
     return a
 
 print(f"fib(10) = {fibonacci(10)}")
-'''
+"""
 
 code = st.text_area("📝 Paste your Python code here:", value=code_default, height=300)
 
@@ -64,7 +70,9 @@ col1, col2 = st.columns(2)
 with col1:
     scan_btn = st.button("🔍 Scan Only", type="secondary", use_container_width=True)
 with col2:
-    execute_btn = st.button("🚀 Execute in Sandbox", type="primary", use_container_width=True)
+    execute_btn = st.button(
+        "🚀 Execute in Sandbox", type="primary", use_container_width=True
+    )
 
 # Output panels
 st.markdown("---")
@@ -113,10 +121,16 @@ if scan_btn:
             st.error(f"Error: {e}")
 
 if execute_btn:
-    override = st.checkbox("⚠️ Override safety blocks? (Only if you trust the code)", value=False)
+    override = st.checkbox(
+        "⚠️ Override safety blocks? (Only if you trust the code)", value=False
+    )
     with st.spinner("Executing in sandbox..."):
         try:
-            resp = requests.post(f"{BACKEND_URL}/execute", json={"code": code, "override": override}, timeout=30)
+            resp = requests.post(
+                f"{BACKEND_URL}/execute",
+                json={"code": code, "override": override},
+                timeout=30,
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 st.success(f"Execution Status: {data.get('status', 'unknown').upper()}")
@@ -154,14 +168,22 @@ try:
         history = hist_resp.json()
         if history:
             for record in history[:10]:  # show last 10
-                with st.expander(f"ID {record['id']} - {record['created_at']} - {record['status']} - Risk: {record['risk_level']}"):
+                with st.expander(
+                    f"ID {record['id']} - {record['created_at']} - {record['status']} - Risk: {record['risk_level']}"
+                ):
                     st.write(f"**Code hash:** {record['code_hash'][:16]}...")
                     st.write(f"**Blocked:** {record['blocked']}")
                     st.write(f"**Exit code:** {record['exit_code']}")
                     st.write(f"**Execution time:** {record['execution_time']:.3f}s")
-                    st.text_area("Stdout (first 500 chars)", record['stdout'][:500], height=100)
-                    if record['stderr']:
-                        st.text_area("Stderr (first 500 chars)", record['stderr'][:500], height=100)
+                    st.text_area(
+                        "Stdout (first 500 chars)", record["stdout"][:500], height=100
+                    )
+                    if record["stderr"]:
+                        st.text_area(
+                            "Stderr (first 500 chars)",
+                            record["stderr"][:500],
+                            height=100,
+                        )
         else:
             st.info("No execution history yet.")
     else:
@@ -170,4 +192,6 @@ except Exception as e:
     st.warning(f"History unavailable: {e}")
 
 st.markdown("---")
-st.caption("⚠️ **Security Disclaimer:** This sandbox provides layered security but is not perfect. Do not run untrusted code from unknown sources without review.")
+st.caption(
+    "⚠️ **Security Disclaimer:** This sandbox provides layered security but is not perfect. Do not run untrusted code from unknown sources without review."
+)

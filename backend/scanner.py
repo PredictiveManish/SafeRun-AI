@@ -213,18 +213,17 @@ class CodeScanner:
                 parts.append(current.id)
             return ".".join(reversed(parts))
         return "unknown"
-    
+
     def _is_write_mode(self, call_node: ast.Call) -> bool:
         """Check if open() call has write mode."""
         if len(call_node.args) >= 2:
             mode_arg = call_node.args[1]
             if isinstance(mode_arg, ast.Constant) and isinstance(mode_arg.value, str):
                 return any(mode in mode_arg.value for mode in WRITE_MODE_NAMES)
-        
+
         # check keyword arg 'mode'
         for kw in call_node.keywords:
             if kw.arg == "mode" and isinstance(kw.value, ast.Constant):
                 if isinstance(kw.value.value, str):
                     return any(mode in kw.value.value for mode in WRITE_MODE_NAMES)
         return False
-    

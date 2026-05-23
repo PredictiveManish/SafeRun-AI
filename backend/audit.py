@@ -23,6 +23,7 @@ class AuditStore:
     def _get_session(self) -> Session:
         """Get a new session (simple approach, not for concurrent heavy use)."""
         from backend.database import _SessionLocal
+
         if _SessionLocal is None:
             init_db(self.db_url)
         return _SessionLocal()
@@ -67,7 +68,12 @@ class AuditStore:
         """Return last N records as dicts."""
         session = self._get_session()
         try:
-            records = session.query(ExecutionRecord).order_by(ExecutionRecord.id.desc()).limit(limit).all()
+            records = (
+                session.query(ExecutionRecord)
+                .order_by(ExecutionRecord.id.desc())
+                .limit(limit)
+                .all()
+            )
             return [r.to_dict() for r in records]
         finally:
             session.close()
