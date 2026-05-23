@@ -13,7 +13,7 @@ BACKEND_URL = "http://localhost:8000"
 
 st.set_page_config(
     page_title="SafeRun AI - Secure Code Sandbox",
-    page_icon="🛡️",
+    page_icon=None,
     layout="wide",
 )
 
@@ -22,10 +22,10 @@ with st.sidebar:
     st.image(
         "https://via.placeholder.com/150x50?text=SafeRun+AI", use_column_width=True
     )  # placeholder
-    st.markdown("## 🧠 SafeRun AI")
+    st.markdown("## SafeRun AI")
     st.markdown("**Secure sandbox execution for AI-generated code**")
     st.markdown("---")
-    st.markdown("### 📋 Active Policy")
+    st.markdown("### Active Policy")
     try:
         policy_resp = requests.get(f"{BACKEND_URL}/health", timeout=2)
         if policy_resp.status_code == 200:
@@ -38,7 +38,7 @@ with st.sidebar:
         "Default policy: **restrictive** (no network, no writes, limited resources)"
     )
     st.markdown("---")
-    st.markdown("### 🛡️ Safety Controls")
+    st.markdown("### Safety Controls")
     st.markdown("- AST scanner")
     st.markdown("- Docker sandbox")
     st.markdown("- Non-root user")
@@ -50,7 +50,7 @@ with st.sidebar:
     )
 
 # Main area
-st.title("🛡️ SafeRun AI")
+st.title("SafeRun AI")
 st.subheader("Run AI-generated Python code in a secure sandbox")
 
 # Code editor
@@ -64,19 +64,19 @@ def fibonacci(n):
 print(f"fib(10) = {fibonacci(10)}")
 """
 
-code = st.text_area("📝 Paste your Python code here:", value=code_default, height=300)
+code = st.text_area("Paste your Python code here:", value=code_default, height=300)
 
 col1, col2 = st.columns(2)
 with col1:
-    scan_btn = st.button("🔍 Scan Only", type="secondary", use_container_width=True)
+    scan_btn = st.button("Scan Only", type="secondary", use_container_width=True)
 with col2:
     execute_btn = st.button(
-        "🚀 Execute in Sandbox", type="primary", use_container_width=True
+        "Execute in Sandbox", type="primary", use_container_width=True
     )
 
 # Output panels
 st.markdown("---")
-st.subheader("📊 Results")
+st.subheader("Results")
 
 if scan_btn:
     with st.spinner("Scanning code..."):
@@ -98,9 +98,9 @@ if scan_btn:
                 with col_block:
                     blocked = data.get("blocked", False)
                     if blocked:
-                        st.error("🚫 Blocked by policy")
+                        st.error("Blocked by policy")
                     else:
-                        st.success("✅ Not blocked")
+                        st.success("Not blocked")
 
                 st.markdown("**Warnings:**")
                 for w in data.get("warnings", []):
@@ -121,9 +121,9 @@ if scan_btn:
             st.error(f"Error: {e}")
 
 if execute_btn:
-    override = st.checkbox(
-        "⚠️ Override safety blocks? (Only if you trust the code)", value=False
-    )
+override = st.checkbox(
+    "Override safety blocks? (Only if you trust the code)", value=False
+)
     with st.spinner("Executing in sandbox..."):
         try:
             resp = requests.post(
@@ -158,7 +158,7 @@ if execute_btn:
 
 # History section
 st.markdown("---")
-st.subheader("📜 Execution History")
+st.subheader("Execution History")
 if st.button("Refresh History"):
     st.rerun()
 
@@ -193,5 +193,5 @@ except Exception as e:
 
 st.markdown("---")
 st.caption(
-    "⚠️ **Security Disclaimer:** This sandbox provides layered security but is not perfect. Do not run untrusted code from unknown sources without review."
+    "Security Disclaimer: This sandbox provides layered security but is not perfect. Do not run untrusted code from unknown sources without review."
 )

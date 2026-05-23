@@ -130,23 +130,23 @@ Provide debugging suggestions and security insights.
         self, scan_result: ScanResult, violations: List[str]
     ) -> str:
         if scan_result.blocked:
-            return f"❌ Code blocked due to high-risk patterns: {', '.join(scan_result.detected_patterns[:3])}. Policy violations: {', '.join(violations[:3])}. Execution not allowed."
+            return f"Code blocked due to high-risk patterns: {', '.join(scan_result.detected_patterns[:3])}. Policy violations: {', '.join(violations[:3])}. Execution not allowed."
         elif scan_result.risk_level == "HIGH":
-            return f"⚠️ High-risk code detected: {', '.join(scan_result.warnings[:2])}. Proceed with caution."
+            return f"High-risk code detected: {', '.join(scan_result.warnings[:2])}. Proceed with caution."
         elif scan_result.risk_level == "MEDIUM":
-            return f"ℹ️ Medium-risk patterns found: {', '.join(scan_result.warnings[:2])}. Review before execution."
+            return f"Medium-risk patterns found: {', '.join(scan_result.warnings[:2])}. Review before execution."
         else:
-            return "✅ Code appears safe based on static analysis."
+            return "Code appears safe based on static analysis."
 
     def _local_execution_explanation(
         self, scan_result: ScanResult, exec_result: ExecutionResult
     ) -> str:
         if exec_result.status == "success":
-            return f"✅ Code executed successfully in sandbox (exit code {exec_result.exit_code}) in {exec_result.execution_time:.2f}s."
+            return f"Code executed successfully in sandbox (exit code {exec_result.exit_code}) in {exec_result.execution_time:.2f}s."
         elif exec_result.status == "timeout":
-            return "⏱️ Execution timed out. The code may contain an infinite loop or heavy computation."
+            return "Execution timed out. The code may contain an infinite loop or heavy computation."
         elif exec_result.status == "error":
             stderr = exec_result.stderr[:200]
-            return f"❌ Runtime error: {stderr}. Check your code for logical issues."
+            return f"Runtime error: {stderr}. Check your code for logical issues."
         else:
-            return "❓ Unexpected execution outcome. Review logs for details."
+            return "Unexpected execution outcome. Review logs for details."
