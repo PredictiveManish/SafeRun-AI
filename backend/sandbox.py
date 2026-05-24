@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionResult:
     """Result of sandbox execution."""
-
     status: str  # success, timeout, error, killed
     stdout: str
     stderr: str
@@ -49,16 +48,14 @@ class SandboxExecutor:
             self.docker_client = None
 
     def _ensure_image(self) -> bool:
-        """Check if sandbox image exists; if not, log error but don't build automatically."""
+        """Check if sandbox image exists."""
         if self.docker_client is None:
             return False
         try:
             self.docker_client.images.get(self.image_name)
             return True
         except ImageNotFound:
-            logger.error(
-                f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} ."
-            )
+            logger.error(f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} .")
             return False
         except APIError as e:
             logger.error(f"Docker API error: {e}")
@@ -74,8 +71,7 @@ class SandboxExecutor:
         filesystem_write_enabled: bool = False,
     ) -> ExecutionResult:
         """
-        Execute code in sandbox container.
-
+        Execute code in sandbox container
         Args:
             code: Python code string
             timeout_seconds: Maximum execution time
@@ -109,41 +105,34 @@ class SandboxExecutor:
             tmp_path = Path(tmpdir)
             code_file = tmp_path / "script.py"
             code_file.write_text(code, encoding="utf-8")
+            # Make script readable and directory traversable for the container user
+            code_file.chmod(0o644)      # rw-r--r--
+            tmp_path.chmod(0o755)       # drwxr-xr-x
 
-            # Prepare container command
-            cmd = ["python", "-u", "/sandbox/script.py"]
-
-            # Build Docker run options
+            # Container configuration
             mem_limit = f"{memory_mb}m"
-            cpu_limit = cpu_cores
-            # For pids limit, use --pids-limit (Docker API)
-            pids_limit = 64  # reasonable limit
+            nano_cpus = int(cpu_cores * 1e9) if cpu_cores else None
+            pids_limit = 64
             read_only_rootfs = True
-            user = "nobody"  # non-root user
-            # Network mode: none for isolation
+            user = "sandbox"  # non-root user (exists in the sandbox image)
             network_mode = "none" if not network_enabled else "bridge"
-            # Remove container automatically after stop
-            auto_remove = True
-
-            # Mount code file as read-only (if filesystem write disabled, we still need to mount script)
-            # We'll mount the temp dir as /sandbox with ro or rw based on policy
+            # IMPORTANT: auto_remove=False so we can fetch logs before removal
+            auto_remove = False
             mount_rw = filesystem_write_enabled
             mount_path = "/sandbox"
 
-            # Additional security: drop all capabilities, no new privileges
             cap_drop = ["ALL"]
             security_opt = ["no-new-privileges:true"]
-            # For additional hardening, we could add seccomp profile, but keep simple for now
 
             start_time = time.time()
             container = None
             try:
-                # Run container
+                # Run container (detached)
                 container = self.docker_client.containers.run(
                     image=self.image_name,
-                    command=cmd,
+                    command=["python", "-u", "/sandbox/script.py"],
                     mem_limit=mem_limit,
-                    nano_cpus=int(cpu_limit * 1e9) if cpu_limit else None,
+                    nano_cpus=nano_cpus,
                     pids_limit=pids_limit,
                     read_only=read_only_rootfs,
                     user=user,
@@ -151,41 +140,21 @@ class SandboxExecutor:
                     network=network_mode,
                     auto_remove=auto_remove,
                     detach=True,
-                    # Mount the code directory
-                    volumes={
-                        tmpdir: {"bind": mount_path, "mode": "rw" if mount_rw else "ro"}
-                    },
+                    volumes={tmpdir: {"bind": mount_path, "mode": "rw" if mount_rw else "ro"}},
                     cap_drop=cap_drop,
                     security_opt=security_opt,
-                    # Extra hardening
                     hostname="sandbox",
                     domainname="local",
-                    # No privileged, no host devices
                     privileged=False,
-                    device_requests=[],  # no devices
-                    # No docker socket mount
                 )
 
                 # Wait for completion with timeout
                 result = container.wait(timeout=timeout_seconds)
                 exit_code = result["StatusCode"]
 
-                # Get logs
-                logs = container.logs(
-                    stdout=True, stderr=True, timestamps=False
-                ).decode("utf-8", errors="replace")
-                # Split stdout/stderr? Docker combines. We can separate but for simplicity combine.
-                # Better: we can't easily separate, but we can store entire logs as stdout, stderr empty.
-                # For better UX, we attempt to split by checking for stderr marker? Not reliable.
-                # We'll put combined in stdout, stderr will have errors if any.
-                # Actually we can use container.logs(stdout=True, stderr=False) separately but that's two calls.
-                # Let's do two calls to get separated.
-                stdout_logs = container.logs(stdout=True, stderr=False).decode(
-                    "utf-8", errors="replace"
-                )
-                stderr_logs = container.logs(stdout=False, stderr=True).decode(
-                    "utf-8", errors="replace"
-                )
+                # Fetch logs (container still exists)
+                stdout_logs = container.logs(stdout=True, stderr=False).decode("utf-8", errors="replace")
+                stderr_logs = container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace")
 
                 execution_time = time.time() - start_time
                 status = "success" if exit_code == 0 else "error"

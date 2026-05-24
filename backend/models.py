@@ -2,11 +2,9 @@
 SQLAlchemy ORM models for audit storage.
 """
 
-from datetime import datetime
-
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
-
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -19,10 +17,11 @@ class ExecutionRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     code_hash = Column(String(64), nullable=False, index=True)
     risk_level = Column(String(20), nullable=False)
-    blocked = Column(Integer, default=0)  # Sqlite boolean as int
+    blocked = Column(Integer, default=0)  # 0 = False, 1 = True
     warnings = Column(Text, default="")  # JSON string
     stdout = Column(Text, default="")
-    exit_code = Column(Integer, default=True)
+    stderr = Column(Text, default="")
+    exit_code = Column(Integer, nullable=True)
     execution_time = Column(Float, default=0.0)
     status = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -35,6 +34,7 @@ class ExecutionRecord(Base):
             "blocked": bool(self.blocked),
             "warnings": self.warnings,
             "stdout": self.stdout,
+            "stderr": self.stderr,
             "exit_code": self.exit_code,
             "execution_time": self.execution_time,
             "status": self.status,
