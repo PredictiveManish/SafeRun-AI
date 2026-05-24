@@ -147,6 +147,7 @@ streamlit run frontend/app.py
 6. Scroll down to see the execution history (last 20 runs).
 
 ---
+## Project Structure
 ```
 saferun-ai/
 ├── README.md
@@ -183,4 +184,11 @@ saferun-ai/
 │   ├── timeout_example.py
 │   └── network_example.py
 └── reports/
+```
+
+
+### Disclaimer
+```
+Disclaimer
+No sandbox is completely secure. Running untrusted code always carries residual risk. Always review AI-generated code before execution, even when using this tool. The authors are not liable for any damages arising from its use.
 ```
