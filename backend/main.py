@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
-from backend.database import init_db, SessionLocal
+from backend.database import init_db
 from backend.schemas import (
     ScanRequest,
     ScanResponse,
@@ -195,3 +195,4 @@ async def get_history(limit: int = 20):
     """Return last N execution records."""
     records = audit_store.get_recent(limit=limit)
     return records
+
