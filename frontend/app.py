@@ -46,7 +46,7 @@ with st.sidebar:
     st.markdown("- Resource limits")
     st.markdown("---")
     st.markdown(
-        "[GitHub](https://github.com/yourusername/saferun-ai) | [Report Issue](https://github.com/yourusername/saferun-ai/issues)"
+        "[GitHub](https://github.com/predictivemanish/saferun-ai) | [Report Issue](https://github.com/predictivemanish/saferun-ai/issues)"
     )
 
 # Main area
@@ -121,9 +121,9 @@ if scan_btn:
             st.error(f"Error: {e}")
 
 if execute_btn:
-override = st.checkbox(
-    "Override safety blocks? (Only if you trust the code)", value=False
-)
+    override = st.checkbox(
+        "Override safety blocks? (Only if you trust the code)", value=False
+    )
     with st.spinner("Executing in sandbox..."):
         try:
             resp = requests.post(
@@ -156,9 +156,9 @@ override = st.checkbox(
         except Exception as e:
             st.error(f"Error: {e}")
 
-# History section
+# History section (replace the existing history part)
 st.markdown("---")
-st.subheader("Execution History")
+st.subheader("📜 Execution History")
 if st.button("Refresh History"):
     st.rerun()
 
@@ -167,23 +167,16 @@ try:
     if hist_resp.status_code == 200:
         history = hist_resp.json()
         if history:
-            for record in history[:10]:  # show last 10
-                with st.expander(
-                    f"ID {record['id']} - {record['created_at']} - {record['status']} - Risk: {record['risk_level']}"
-                ):
+            for record in history[:10]:
+                with st.expander(f"ID {record['id']} - {record['created_at']} - {record['status']} - Risk: {record['risk_level']}"):
                     st.write(f"**Code hash:** {record['code_hash'][:16]}...")
                     st.write(f"**Blocked:** {record['blocked']}")
                     st.write(f"**Exit code:** {record['exit_code']}")
                     st.write(f"**Execution time:** {record['execution_time']:.3f}s")
-                    st.text_area(
-                        "Stdout (first 500 chars)", record["stdout"][:500], height=100
-                    )
-                    if record["stderr"]:
-                        st.text_area(
-                            "Stderr (first 500 chars)",
-                            record["stderr"][:500],
-                            height=100,
-                        )
+                    # Unique keys for each text_area
+                    st.text_area("Stdout (first 500 chars)", record['stdout'][:500], height=100, key=f"stdout_{record['id']}")
+                    if record['stderr']:
+                        st.text_area("Stderr (first 500 chars)", record['stderr'][:500], height=100, key=f"stderr_{record['id']}")
         else:
             st.info("No execution history yet.")
     else:
