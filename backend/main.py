@@ -195,4 +195,3 @@ async def get_history(limit: int = 20):
     """Return last N execution records."""
     records = audit_store.get_recent(limit=limit)
     return records
-

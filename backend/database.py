@@ -15,7 +15,9 @@ def init_db(db_url: str = "sqlite:///./saferun.db"):
     """Initialize database engine and create tables."""
     global _engine, _SessionLocal
     _engine = create_engine(db_url, connect_args={"check_same_thread": False})
-    _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)  # ✅ Fixed: was '-' now '='
+    _SessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=_engine
+    )  #Fixed: was '-' now '='
     Base.metadata.create_all(bind=_engine)
 
 

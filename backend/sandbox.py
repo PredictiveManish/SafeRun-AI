@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionResult:
     """Result of sandbox execution."""
+
     status: str  # success, timeout, error, killed
     stdout: str
     stderr: str
@@ -55,7 +56,9 @@ class SandboxExecutor:
             self.docker_client.images.get(self.image_name)
             return True
         except ImageNotFound:
-            logger.error(f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} .")
+            logger.error(
+                f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} ."
+            )
             return False
         except APIError as e:
             logger.error(f"Docker API error: {e}")
@@ -106,8 +109,8 @@ class SandboxExecutor:
             code_file = tmp_path / "script.py"
             code_file.write_text(code, encoding="utf-8")
             # Make script readable and directory traversable for the container user
-            code_file.chmod(0o644)      # rw-r--r--
-            tmp_path.chmod(0o755)       # drwxr-xr-x
+            code_file.chmod(0o644)  # rw-r--r--
+            tmp_path.chmod(0o755)  # drwxr-xr-x
 
             # Container configuration
             mem_limit = f"{memory_mb}m"
@@ -140,7 +143,9 @@ class SandboxExecutor:
                     network=network_mode,
                     auto_remove=auto_remove,
                     detach=True,
-                    volumes={tmpdir: {"bind": mount_path, "mode": "rw" if mount_rw else "ro"}},
+                    volumes={
+                        tmpdir: {"bind": mount_path, "mode": "rw" if mount_rw else "ro"}
+                    },
                     cap_drop=cap_drop,
                     security_opt=security_opt,
                     hostname="sandbox",
@@ -153,8 +158,12 @@ class SandboxExecutor:
                 exit_code = result["StatusCode"]
 
                 # Fetch logs (container still exists)
-                stdout_logs = container.logs(stdout=True, stderr=False).decode("utf-8", errors="replace")
-                stderr_logs = container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace")
+                stdout_logs = container.logs(stdout=True, stderr=False).decode(
+                    "utf-8", errors="replace"
+                )
+                stderr_logs = container.logs(stdout=False, stderr=True).decode(
+                    "utf-8", errors="replace"
+                )
 
                 execution_time = time.time() - start_time
                 status = "success" if exit_code == 0 else "error"

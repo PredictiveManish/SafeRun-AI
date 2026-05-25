@@ -168,15 +168,27 @@ try:
         history = hist_resp.json()
         if history:
             for record in history[:10]:
-                with st.expander(f"ID {record['id']} - {record['created_at']} - {record['status']} - Risk: {record['risk_level']}"):
+                with st.expander(
+                    f"ID {record['id']} - {record['created_at']} - {record['status']} - Risk: {record['risk_level']}"
+                ):
                     st.write(f"**Code hash:** {record['code_hash'][:16]}...")
                     st.write(f"**Blocked:** {record['blocked']}")
                     st.write(f"**Exit code:** {record['exit_code']}")
                     st.write(f"**Execution time:** {record['execution_time']:.3f}s")
                     # Unique keys for each text_area
-                    st.text_area("Stdout (first 500 chars)", record['stdout'][:500], height=100, key=f"stdout_{record['id']}")
-                    if record['stderr']:
-                        st.text_area("Stderr (first 500 chars)", record['stderr'][:500], height=100, key=f"stderr_{record['id']}")
+                    st.text_area(
+                        "Stdout (first 500 chars)",
+                        record["stdout"][:500],
+                        height=100,
+                        key=f"stdout_{record['id']}",
+                    )
+                    if record["stderr"]:
+                        st.text_area(
+                            "Stderr (first 500 chars)",
+                            record["stderr"][:500],
+                            height=100,
+                            key=f"stderr_{record['id']}",
+                        )
         else:
             st.info("No execution history yet.")
     else:

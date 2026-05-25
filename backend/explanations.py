@@ -27,6 +27,7 @@ DEFAULT_MAX_TOKENS = 512
 
 class SarvamAPIError(Exception):
     """Raised when Sarvam AI API returns an error response."""
+
     pass
 
 
@@ -86,13 +87,17 @@ class ExplanationGenerator:
         """Return a human-readable explanation for static scan results."""
         if self.sarvam_enabled:
             try:
-                return self._sarvam_scan_explanation(code, scan_result, policy_violations)
+                return self._sarvam_scan_explanation(
+                    code, scan_result, policy_violations
+                )
             except SarvamAPIError as e:
                 logger.warning(f"Sarvam AI error, falling back to local: {e}")
             except requests.RequestException as e:
                 logger.warning(f"Sarvam AI network error, falling back to local: {e}")
             except Exception as e:
-                logger.warning(f"Sarvam AI unexpected error, falling back to local: {e}")
+                logger.warning(
+                    f"Sarvam AI unexpected error, falling back to local: {e}"
+                )
 
         return self._local_scan_explanation(scan_result, policy_violations)
 
@@ -114,9 +119,13 @@ class ExplanationGenerator:
             except requests.RequestException as e:
                 logger.warning(f"Sarvam AI network error, falling back to local: {e}")
             except Exception as e:
-                logger.warning(f"Sarvam AI unexpected error, falling back to local: {e}")
+                logger.warning(
+                    f"Sarvam AI unexpected error, falling back to local: {e}"
+                )
 
-        return self._local_execution_explanation(scan_result, exec_result, policy_violations)
+        return self._local_execution_explanation(
+            scan_result, exec_result, policy_violations
+        )
 
     # ------------------------------------------------------------------ #
     # Sarvam AI — prompt builders
@@ -130,8 +139,14 @@ class ExplanationGenerator:
     ) -> str:
         code_snippet = (code or "")[:500].strip() or "(empty)"
         violations_str = ", ".join(violations) if violations else "None"
-        warnings_str = ", ".join(scan_result.warnings) if scan_result.warnings else "None"
-        patterns_str = ", ".join(scan_result.detected_patterns) if scan_result.detected_patterns else "None"
+        warnings_str = (
+            ", ".join(scan_result.warnings) if scan_result.warnings else "None"
+        )
+        patterns_str = (
+            ", ".join(scan_result.detected_patterns)
+            if scan_result.detected_patterns
+            else "None"
+        )
 
         prompt = f"""You are a security expert reviewing AI-generated code.
 Explain the following static analysis results in a concise paragraph (3-5 sentences) for a developer.
@@ -159,7 +174,9 @@ Respond in language: {self.language}"""
     ) -> str:
         code_snippet = (code or "")[:500].strip() or "(empty)"
         violations_str = ", ".join(violations) if violations else "None"
-        warnings_str = ", ".join(scan_result.warnings) if scan_result.warnings else "None"
+        warnings_str = (
+            ", ".join(scan_result.warnings) if scan_result.warnings else "None"
+        )
         stdout_snippet = (exec_result.stdout or "")[:300]
         stderr_snippet = (exec_result.stderr or "")[:300]
 
@@ -170,8 +187,8 @@ Risk level: {scan_result.risk_level}
 Execution status: {exec_result.status}
 Exit code: {exec_result.exit_code}
 Execution time: {exec_result.execution_time:.2f}s
-Stdout (truncated): {stdout_snippet or '(none)'}
-Stderr (truncated): {stderr_snippet or '(none)'}
+Stdout (truncated): {stdout_snippet or "(none)"}
+Stderr (truncated): {stderr_snippet or "(none)"}
 Warnings: {warnings_str}
 Policy violations: {violations_str}
 
@@ -210,8 +227,8 @@ Respond in language: {self.language}"""
                 }
             ],
             "max_tokens": self.max_tokens,
-            "temperature": 0.2,       # low temp = focused, deterministic output
-            "reasoning_effort": "low", # keep latency down for inline explanations
+            "temperature": 0.2,  # low temp = focused, deterministic output
+            "reasoning_effort": "low",  # keep latency down for inline explanations
         }
 
         logger.debug(f"Calling Sarvam AI [{self.model}] prompt_len={len(prompt)}")
@@ -257,7 +274,9 @@ Respond in language: {self.language}"""
         if scan_result.blocked:
             pattern_str = ", ".join(patterns[:3]) or "unknown patterns"
             violation_str = (
-                f" Policy violations: {', '.join(violations[:3])}." if violations else ""
+                f" Policy violations: {', '.join(violations[:3])}."
+                if violations
+                else ""
             )
             return (
                 f"❌ Code was blocked due to high-risk patterns: {pattern_str}."
