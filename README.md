@@ -68,6 +68,26 @@ We assume the attacker (or the AI model) can generate arbitrary Python code. The
 
 ---
 
+## Quick Startup:
+
+```bash
+# Install CLI
+pip install saferun-ai
+
+# Use immediately (connects to hosted backend)
+saferun script.py
+saferun run script.py
+
+# Or use local backend
+export SAFERUN_API_URL=http://localhost:8000
+saferun script.py
+```
+---
+
+---
+Try Online: saferun-ai.onrender.com
+---
+
 ## Tech Stack
 
 | Component       | Technology                     |

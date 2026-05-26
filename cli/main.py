@@ -18,7 +18,7 @@ def get_default_api_url():
     if env_url:
         return env_url
     # Default to localhost for now 
-    return "http://localhost:8000"
+    return "https://saferun-ai.onrender.com"
 
 API_BASE = get_default_api_url()
 

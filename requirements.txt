@@ -8,7 +8,6 @@ docker
 pyyaml
 psutil
 requests
-streamlit
 pytest
 httpx
 click

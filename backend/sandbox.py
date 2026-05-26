@@ -45,22 +45,6 @@ class SandboxExecutor:
             logger.error(f"Docker not available: {e}")
             self.docker_client = None
 
-    def _ensure_image(self) -> bool:
-        """Check if sandbox image exists."""
-        if self.docker_client is None:
-            return False
-        try:
-            self.docker_client.images.get(self.image_name)
-            return True
-        except ImageNotFound:
-            logger.error(
-                f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} ."
-            )
-            return False
-        except APIError as e:
-            logger.error(f"Docker API error: {e}")
-            return False
-
     def execute(
         self,
         code: str,
