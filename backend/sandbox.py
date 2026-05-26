@@ -210,3 +210,25 @@ class SandboxExecutor:
                         container.remove(force=True)
                     except Exception:
                         pass
+
+    def _ensure_image(self) -> bool:
+        """Check if sandbox image exists, build if needed."""
+        if self.docker_client is None:
+            return False
+        try:
+            self.docker_client.images.get(self.image_name)
+            return True
+        except ImageNotFound:
+            logger.info(f"Building sandbox image...")
+            try:
+                # Build from included Dockerfile
+                sandbox_dir = Path(__file__).parent.parent.parent / "sandbox_image"
+                self.docker_client.images.build(
+                    path=str(sandbox_dir),
+                    tag=self.image_name,
+                    rm=True
+                )
+                return True
+            except Exception as e:
+                logger.error(f"Failed to build: {e}")
+                return False
