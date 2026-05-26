@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 DANGEROUS_IMPORTS = {
     "os",
     "subprocess",
-    "sockets",
+    "socket",
     "requests",
     "urllib",
     "urllib3",
@@ -27,7 +27,7 @@ DANGEROUS_IMPORTS = {
     "msvcrt",
 }
 
-DANGEROURS_CALLS = {
+DANGEROUS_CALLS = {
     "eval",
     "exec",
     "compile",
@@ -119,10 +119,12 @@ class CodeScanner:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     name = alias.name.split(".")[0]
-                    warnings.append(f"Dangerous import: {name}")
-                    patterns.append(f"import_{name}")
-                    risk_score += 2
-                    blocked = True
+
+                    if name in DANGEROUS_IMPORTS:
+                        warnings.append(f"Dangerous import: {name}")
+                        patterns.append(f"import_{name}")
+                        risk_score += 2
+                        blocked = True
             elif isinstance(node, ast.ImportFrom):
                 module = node.module.split(".")[0] if node.module else ""
                 if module in DANGEROUS_IMPORTS:
@@ -134,7 +136,7 @@ class CodeScanner:
             # Dangerous function calls
             elif isinstance(node, ast.Call):
                 func_name = self._get_func_name(node.func)
-                if func_name in DANGEROURS_CALLS:
+                if func_name in DANGEROUS_CALLS:
                     # Special case: open with write mode
                     if func_name == "open":
                         if self._is_write_mode(node):

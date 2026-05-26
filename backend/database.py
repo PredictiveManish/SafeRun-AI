@@ -17,7 +17,7 @@ def init_db(db_url: str = "sqlite:///./saferun.db"):
     _engine = create_engine(db_url, connect_args={"check_same_thread": False})
     _SessionLocal = sessionmaker(
         autocommit=False, autoflush=False, bind=_engine
-    )  #Fixed: was '-' now '='
+    )  # Fixed: was '-' now '='
     Base.metadata.create_all(bind=_engine)
 
 
