@@ -183,7 +183,8 @@ saferun-ai/
 │   ├── dangerous_example.py
 │   ├── timeout_example.py
 │   └── network_example.py
-└── reports/
+├── tests/
+│    ├── test_scanner.py
 ```
 
 

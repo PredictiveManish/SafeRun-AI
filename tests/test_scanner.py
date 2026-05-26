@@ -1,5 +1,7 @@
-import ast
-from scanner import CodeScanner, ScanResult
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from backend.scanner import CodeScanner
 
 def test_imports():
     """Test that only dangerous imports are flagged"""
