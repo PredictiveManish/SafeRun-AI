@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeRun AI – Secure Sandbox</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 260px;
+      background: #1e293b;
+      padding: 2rem 1.5rem;
+      border-right: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    .logo { font-size: 1.8rem; font-weight: 700; }
+    .logo span { color: #38bdf8; }
+    .sidebar-section h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+    .policy-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      margin-bottom: 0.3rem;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.red { background: #ef4444; }
+    .dot.green { background: #22c55e; }
+    .main {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .header h1 { font-size: 2rem; font-weight: 600; }
+    .button-group { display: flex; gap: 0.5rem; }
+    button {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: #ef4444; color: white; }
+    
+    textarea::placeholder {
+    color: #64748b;
+    line-height: 1.6;
+    }
+    textarea {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      color: #e2e8f0;
+      padding: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: vertical;
+      margin-bottom: 1.5rem;
+    }
+    .result-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .badge-low { background: #22c55e20; color: #22c55e; }
+    .badge-medium { background: #f59e0b20; color: #f59e0b; }
+    .badge-high { background: #ef444420; color: #ef4444; }
+    .badge-blocked { background: #a855f720; color: #a855f7; }
+    pre {
+      background: #0f172a;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 0.5rem 0;
+    }
+    .history-item {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .history-item:hover { background: #2d3a4f; }
+    .flex-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff50;
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">🛡️ <span>SafeRun</span> AI</div>
+    <div class="sidebar-section">
+      <h3>Active Policy</h3>
+      <div class="policy-item"><span class="dot green"></span> Network: Off</div>
+      <div class="policy-item"><span class="dot green"></span> Write FS: Off</div>
+      <div class="policy-item"><span class="dot green"></span> Non‑root user</div>
+      <div class="policy-item"><span class="dot green"></span> CPU/Mem limits</div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Safety Layers</h3>
+      <div style="font-size:0.85rem; color:#94a3b8;">
+        AST Scanner &bull; Docker Sandbox &bull; Policy Engine
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <h1>Run AI‑generated code safely</h1>
+      <div class="button-group">
+        <button class="btn-secondary" onclick="document.getElementById('codeArea').value=''">Clear</button>
+        <button class="btn-primary" onclick="scanCode()">🔍 Scan Only</button>
+        <button class="btn-primary" onclick="executeCode()">▶ Execute in Sandbox</button>
+      </div>
+    </div>
+
+    <textarea id="codeArea" rows="12" placeholder="Paste your Python code here...">
+# Example safe code
+def fibonacci(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+
+print(f"fib(10) = {fibonacci(10)}")
+    </textarea>
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+        <input type="checkbox" id="overrideCheck">
+        <span>Override safety blocks (use with caution)</span>
+      </label>
+    </div>
+
+    <div id="resultArea"></div>
+
+    <h2 style="margin-top:2rem; margin-bottom:1rem;">📜 History</h2>
+    <div id="historyArea">Loading history...</div>
+  </main>
+
+  <script>
+    const API_BASE = window.location.origin;  // same origin
+
+    function showSpinner() {
+      return '<div class="spinner"></div> Processing...';
+    }
+
+    function getRiskBadge(level) {
+      const map = {LOW:'badge-low', MEDIUM:'badge-medium', HIGH:'badge-high', BLOCKED:'badge-blocked'};
+      return `<span class="badge ${map[level] || ''}">${level}</span>`;
+    }
+
+    async function scanCode() {
+      const code = document.getElementById('codeArea').value;
+      const resultArea = document.getElementById('resultArea');
+      resultArea.innerHTML = showSpinner();
+      try {
+        const resp = await fetch(`${API_BASE}/scan`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({code})
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Scan failed');
+        renderScanResult(data);
+      } catch(e) {
+        resultArea.innerHTML = `<div class="result-card" style="color:#ef4444;">Error: ${e.message}</div>`;
+      }
+    }
+
+    function renderScanResult(data) {
+      const blocked = data.blocked ? '🚫 Blocked' : '✅ Allowed';
+      const html = `
+        <div class="result-card">
+          <div class="flex-row" style="justify-content:space-between;">
+            <h3>Static Scan Result</h3>
+            <div>${getRiskBadge(data.risk_level)}</div>
+          </div>
+          <p style="margin:1rem 0;"><strong>Policy status:</strong> ${blocked}</p>
+          <p><strong>Explanation:</strong> ${data.explanation}</p>
+          ${data.warnings.length ? `<details><summary>Warnings (${data.warnings.length})</summary><ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul></details>` : ''}
+          ${data.policy_violations.length ? `<details><summary>Policy Violations (${data.policy_violations.length})</summary><ul>${data.policy_violations.map(v => `<li>${v}</li>`).join('')}</ul></details>` : ''}
+          <details><summary>Detected Patterns</summary><pre>${data.detected_patterns.join(', ')}</pre></details>
+        </div>`;
+      document.getElementById('resultArea').innerHTML = html;
+    }
+
+    async function executeCode() {
+      const code = document.getElementById('codeArea').value;
+      const override = document.getElementById('overrideCheck').checked;
+      const resultArea = document.getElementById('resultArea');
+      resultArea.innerHTML = showSpinner();
+      try {
+        const resp = await fetch(`${API_BASE}/execute`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({code, override})
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Execution failed');
+        renderExecResult(data);
+      } catch(e) {
+        resultArea.innerHTML = `<div class="result-card" style="color:#ef4444;">Error: ${e.message}</div>`;
+      }
+    }
+
+    function renderExecResult(data) {
+      const statusColor = data.status === 'success' ? '#22c55e' : '#ef4444';
+      const html = `
+        <div class="result-card">
+          <div class="flex-row" style="justify-content:space-between;">
+            <h3>Execution Result</h3>
+            <div>${getRiskBadge(data.risk_level)}</div>
+          </div>
+          <p style="color:${statusColor}; font-weight:600;">Status: ${data.status.toUpperCase()} (exit ${data.exit_code})</p>
+          <p>Execution time: ${data.execution_time.toFixed(3)}s</p>
+          <p><strong>Explanation:</strong> ${data.explanation}</p>
+          <div style="display:flex; gap:1rem;">
+            <div style="flex:1;"><h4>stdout</h4><pre>${escapeHtml(data.stdout) || '(empty)'}</pre></div>
+            <div style="flex:1;"><h4>stderr</h4><pre>${escapeHtml(data.stderr) || '(empty)'}</pre></div>
+          </div>
+          ${data.warnings.length ? `<details><summary>Warnings</summary><ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul></details>` : ''}
+        </div>`;
+      document.getElementById('resultArea').innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    async function loadHistory() {
+      const area = document.getElementById('historyArea');
+      try {
+        const resp = await fetch(`${API_BASE}/history`);
+        const data = await resp.json();
+        if (data.length === 0) {
+          area.innerHTML = '<p style="color:#94a3b8;">No executions yet.</p>';
+          return;
+        }
+        area.innerHTML = data.slice(0, 20).map(rec => `
+          <div class="history-item" onclick="alert('Stdout: ${escapeHtml(rec.stdout).substring(0,200)}')">
+            <div class="flex-row">
+              <span>#${rec.id}</span>
+              <span>${getRiskBadge(rec.risk_level)}</span>
+              <span style="color:#94a3b8;">${rec.status}</span>
+              <span style="margin-left:auto; color:#64748b;">${new Date(rec.created_at).toLocaleString()}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        area.innerHTML = `<p style="color:#ef4444;">Could not load history.</p>`;
+      }
+    }
+
+    // Initial history load
+    loadHistory();
+  </script>
+</body>
+</html>

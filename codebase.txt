@@ -1,0 +1,2645 @@
+
+
+=== FILE: .env.example ===
+
+# Sarvam AI (optional)
+SARVAM_API_KEY=your_key_here
+
+# Backend (optional)
+BACKEND_HOST=0.0.0.0
+BACKEND_PORT=8000
+
+# Docker sandbox image name
+SANDBOX_IMAGE=saferun-sandbox:latest
+
+# Database path (default: sqlite:///./saferun.db)
+DATABASE_URL=sqlite:///./saferun.db
+
+# Policy file path (default: backend/policies/default_policy.yaml)
+POLICY_FILE=backend/policies/default_policy.yaml
+
+
+=== FILE: .gitignore ===
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.env 
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# Logs and reports
+logs/
+*.log
+reports/
+*.pid
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+.venv
+
+
+=== FILE: README.md ===
+
+# SafeRun AI
+
+Secure sandbox execution for AI-generated Python code.
+
+---
+
+## Overview
+
+SafeRun AI is a local-first developer tool that executes untrusted Python code inside a hardened Docker sandbox. It combines static AST scanning, policy enforcement, resource limits, and audit logging to protect the host system from malicious or buggy AI-generated code.
+
+The tool is designed for developers, AI engineers, and local LLM users who need to test AI-generated code without risking their machine.
+
+---
+
+## Problem
+
+Large language models can generate code that:
+
+- Deletes or modifies files (`os.remove`, `shutil.rmtree`)
+- Spawns shells (`subprocess.run`)
+- Exfiltrates data via network requests
+- Consumes all CPU/memory (fork bombs, infinite loops)
+- Uses `eval`/`exec` to bypass static checks
+
+Running such code directly on your host is dangerous. SafeRun AI provides a layered defense.
+
+---
+
+## Threat Model
+
+We assume the attacker (or the AI model) can generate arbitrary Python code. The sandbox aims to prevent:
+
+- Persistence – modifying system files or installing backdoors
+- Exfiltration – sending data to external networks
+- Resource exhaustion – CPU/memory/disk DoS
+- Privilege escalation – breaking out of the container to the host
+
+**Note:** This is not a perfect sandbox (see Limitations). It is a layered defense suitable for local development.
+
+---
+
+**Security layers:**
+
+- AST-based static scanner (detects dangerous imports/calls/paths)
+- YAML policy engine (allow/block lists, resource limits)
+- Docker container with:
+  - Non-root user (`sandbox`, UID 1000)
+  - Read-only root filesystem
+  - No network access (by default)
+  - Memory/CPU limits
+  - Process limits (pids-limit=64)
+  - No privileged mode, no host devices
+- Optional Sarvam AI explanations (falls back to local rules)
+
+---
+
+## Features
+
+- Execute untrusted Python in isolated Docker sandbox
+- Static risk scanner with risk levels: LOW, MEDIUM, HIGH, BLOCKED
+- Configurable policy (allowed imports, blocked calls, resources)
+- Runtime monitoring (stdout, stderr, exit code, execution time)
+- SQLite audit history with last 20 executions shown
+- Optional Sarvam AI integration (graceful fallback)
+- Works fully offline (no API key required)
+- Developer-friendly Streamlit UI
+- Export execution reports as JSON
+
+---
+
+## Tech Stack
+
+| Component       | Technology                     |
+|----------------|--------------------------------|
+| Backend        | Python 3.11+, FastAPI, Pydantic|
+| Sandbox        | Docker SDK for Python          |
+| Scanner        | Python `ast` module            |
+| Policy         | PyYAML                         |
+| Database       | SQLAlchemy + SQLite            |
+| Frontend       | Streamlit                      |
+| AI (optional)  | Sarvam AI REST API             |
+| Testing        | pytest                         |
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Python 3.11 or higher
+- Docker Desktop (or Docker Engine) running
+- (Optional) Sarvam AI API key
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/predictivemanish/saferun-ai.git
+cd saferun-ai
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate      # Linux/macOS
+venv\Scripts\activate         # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Build the sandbox Docker image
+cd sandbox_image
+docker build -t saferun-sandbox:latest .
+cd ..
+
+# Set environment variables (optional)
+cp .env.example .env
+# Edit .env if you have a Sarvam API key (otherwise leave empty)
+
+# Initialize database (auto-creates saferun.db)
+python -c "from backend.database import init_db; init_db()"
+```
+
+--
+### How to run?
+
+- Terminal 1 (Backend)
+```
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+- Terminal 2 (Frontend)
+```
+streamlit run frontend/app.py
+```
+
+---
+## Usage
+1. Paste Python code into the editor.
+
+2. Click Scan Only to see static analysis results and risk level.
+
+3. Click Execute in Sandbox to run the code inside Docker.
+
+4. If the code is blocked, check the Override safety blocks checkbox to force execution (use with caution).
+
+5. View execution results, stdout/stderr, and execution time.
+
+6. Scroll down to see the execution history (last 20 runs).
+
+---
+## Project Structure
+```
+saferun-ai/
+├── README.md
+├── requirements.txt
+├── .env.example
+├── docker-compose.yml
+├── backend/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── config.py
+│   ├── database.py
+│   ├── models.py
+│   ├── schemas.py
+│   ├── scanner.py
+│   ├── sandbox.py
+│   ├── policy_engine.py
+│   ├── audit.py
+│   ├── explanations.py
+│   ├── utils.py
+│   └── policies/
+│       └── default_policy.yaml
+├── frontend/
+│   ├── __init__.py
+│   └── app.py
+├── sandbox_image/
+│   └── Dockerfile
+├── tests/
+│   ├── test_scanner.py
+│   ├── test_policy.py
+│   └── test_api.py
+├── examples/
+│   ├── safe_example.py
+│   ├── dangerous_example.py
+│   ├── timeout_example.py
+│   └── network_example.py
+├── tests/
+│    ├── test_scanner.py
+```
+
+
+### Disclaimer
+```
+Disclaimer
+No sandbox is completely secure. Running untrusted code always carries residual risk. Always review AI-generated code before execution, even when using this tool. The authors are not liable for any damages arising from its use.
+```
+
+
+=== FILE: backend/__init__.py ===
+
+"""SafeRun AI Backend Module."""
+
+
+=== FILE: backend/audit.py ===
+
+"""
+Audit storage using SQLAlchemy.
+Provides methods to create and retrieve execution records.
+"""
+
+import hashlib
+import json
+from typing import List, Optional
+from sqlalchemy.orm import Session
+from backend.database import init_db
+from backend.models import ExecutionRecord
+
+
+class AuditStore:
+    """Handles storage of execution history."""
+
+    def __init__(self, db_url: str):
+        self.db_url = db_url
+        # Ensure DB initialized
+        init_db(db_url)
+        self._session = None
+
+    def _get_session(self) -> Session:
+        """Get a new session (simple approach, not for concurrent heavy use)."""
+        from backend.database import _SessionLocal
+
+        if _SessionLocal is None:
+            init_db(self.db_url)
+        return _SessionLocal()
+
+    def create_record(
+        self,
+        code: str,
+        scan_risk_level: str,
+        blocked: bool,
+        warnings: List[str],
+        stdout: str,
+        stderr: str,
+        exit_code: Optional[int],
+        execution_time: float,
+        status: str,
+    ) -> ExecutionRecord:
+        """Create and store an execution record."""
+        code_hash = hashlib.sha256(code.encode()).hexdigest()
+        warnings_json = json.dumps(warnings)
+
+        record = ExecutionRecord(
+            code_hash=code_hash,
+            risk_level=scan_risk_level,
+            blocked=1 if blocked else 0,
+            warnings=warnings_json,
+            stdout=stdout,
+            stderr=stderr,
+            exit_code=exit_code,
+            execution_time=execution_time,
+            status=status,
+        )
+        session = self._get_session()
+        try:
+            session.add(record)
+            session.commit()
+            session.refresh(record)
+            return record
+        finally:
+            session.close()
+
+    def get_recent(self, limit: int = 20) -> List[dict]:
+        """Return last N records as dicts."""
+        session = self._get_session()
+        try:
+            records = (
+                session.query(ExecutionRecord)
+                .order_by(ExecutionRecord.id.desc())
+                .limit(limit)
+                .all()
+            )
+            return [r.to_dict() for r in records]
+        finally:
+            session.close()
+
+
+=== FILE: backend/config.py ===
+
+"""
+Configuration management using Pydantic Settings.
+Reads from environment variables and .env files.
+"""
+
+from typing import Optional
+from pydantic_settings import BaseSettings
+from pydantic import Field
+
+
+class Settings(BaseSettings):
+    """Application settings"""
+
+    # Sarvam AI (optional)
+    sarvam_api_key: Optional[str] = Field(None, env="SARVAM_API_KEY")
+
+    # Backend
+    backend_host: str = Field("0.0.0.0", env="BACKEND_HOST")
+    backend_port: int = Field(8000, env="BACKEND_PORT")
+
+    # Docker sandbox
+    sandbox_image: str = Field("saferun-sandbox:latest", env="SANDBOX_IMAGE")
+
+    # Database
+    database_url: str = Field("sqlite:///./saferun.db", env="DATABASE_URL")
+
+    # Policy
+    policy_file: str = Field("backend/policies/default_policy.yaml", env="POLICY_FILE")
+
+    class Config:
+        env_file = ".env"
+        env_file_config = "utf-8"
+        case_sensitive = False
+
+
+settings = Settings()
+
+
+=== FILE: backend/database.py ===
+
+"""
+Database initialization and session management.
+SQLAlchemy setup for SQLite.
+"""
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from backend.models import Base
+
+_engine = None
+_SessionLocal = None
+
+
+def init_db(db_url: str = "sqlite:///./saferun.db"):
+    """Initialize database engine and create tables."""
+    global _engine, _SessionLocal
+    _engine = create_engine(db_url, connect_args={"check_same_thread": False})
+    _SessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=_engine
+    )  # Fixed: was '-' now '='
+    Base.metadata.create_all(bind=_engine)
+
+
+def get_db() -> Session:
+    """Dependency for FastAPI to get DB session."""
+    if _SessionLocal is None:
+        raise RuntimeError("Database not initialized. Call init_db() first.")
+    db = _SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+=== FILE: backend/explanations.py ===
+
+"""
+Explanation generation: optional Sarvam AI with local fallback.
+
+Sarvam AI docs: https://docs.sarvam.ai/api-reference-docs/chat/chat-completions
+Auth: api-subscription-key header (sk_xxx format)
+Models: sarvam-30b (64K ctx) | sarvam-105b (128K ctx) | sarvam-m (legacy)
+"""
+
+import logging
+from typing import Optional, List, Literal
+
+import requests
+
+from backend.scanner import ScanResult
+from backend.sandbox import ExecutionResult
+
+logger = logging.getLogger(__name__)
+
+# Supported Sarvam chat models
+SarvamModel = Literal["sarvam-105b", "sarvam-30b", "sarvam-m"]
+
+SARVAM_CHAT_URL = "https://api.sarvam.ai/v1/chat/completions"
+DEFAULT_MODEL: SarvamModel = "sarvam-30b"
+DEFAULT_TIMEOUT = 10  # seconds
+DEFAULT_MAX_TOKENS = 512
+
+
+class SarvamAPIError(Exception):
+    """Raised when Sarvam AI API returns an error response."""
+
+    pass
+
+
+class ExplanationGenerator:
+    """
+    Generates human-readable explanations for code scan and execution results.
+
+    Uses Sarvam AI (sarvam-30b / sarvam-105b) when an API key is provided,
+    with automatic fallback to a local rule-based engine on failure.
+
+    Authentication:
+        Sarvam uses the 'api-subscription-key' header (sk_xxx format).
+        Do NOT use 'Authorization: Bearer' — that will return 401/403.
+
+    Args:
+        api_key: Sarvam AI subscription key (sk_xxx). Leave None to use local only.
+        model: Which Sarvam chat model to use. Defaults to 'sarvam-30b'.
+        language: Target language for explanations. Sarvam supports 10+ Indic
+                  languages + English. Pass BCP-47 codes e.g. 'hi-IN', 'en-IN'.
+                  Defaults to 'en-IN' (English).
+        max_tokens: Max tokens for Sarvam response. Defaults to 512.
+        timeout: Request timeout in seconds. Defaults to 10.
+    """
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: SarvamModel = DEFAULT_MODEL,
+        language: str = "en-IN",
+        max_tokens: int = DEFAULT_MAX_TOKENS,
+        timeout: int = DEFAULT_TIMEOUT,
+    ):
+        self.api_key = api_key
+        self.model = model
+        self.language = language
+        self.max_tokens = max_tokens
+        self.timeout = timeout
+        self.sarvam_enabled = bool(api_key)
+
+        if self.sarvam_enabled:
+            logger.info(
+                f"Sarvam AI enabled — model={self.model}, language={self.language}"
+            )
+        else:
+            logger.info("Sarvam AI disabled — using local explanation engine.")
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+
+    def generate_scan_explanation(
+        self,
+        code: str,
+        scan_result: ScanResult,
+        policy_violations: List[str],
+    ) -> str:
+        """Return a human-readable explanation for static scan results."""
+        if self.sarvam_enabled:
+            try:
+                return self._sarvam_scan_explanation(
+                    code, scan_result, policy_violations
+                )
+            except SarvamAPIError as e:
+                logger.warning(f"Sarvam AI error, falling back to local: {e}")
+            except requests.RequestException as e:
+                logger.warning(f"Sarvam AI network error, falling back to local: {e}")
+            except Exception as e:
+                logger.warning(
+                    f"Sarvam AI unexpected error, falling back to local: {e}"
+                )
+
+        return self._local_scan_explanation(scan_result, policy_violations)
+
+    def generate_execution_explanation(
+        self,
+        code: str,
+        scan_result: ScanResult,
+        exec_result: ExecutionResult,
+        policy_violations: List[str],
+    ) -> str:
+        """Return a human-readable explanation for sandbox execution results."""
+        if self.sarvam_enabled:
+            try:
+                return self._sarvam_execution_explanation(
+                    code, scan_result, exec_result, policy_violations
+                )
+            except SarvamAPIError as e:
+                logger.warning(f"Sarvam AI error, falling back to local: {e}")
+            except requests.RequestException as e:
+                logger.warning(f"Sarvam AI network error, falling back to local: {e}")
+            except Exception as e:
+                logger.warning(
+                    f"Sarvam AI unexpected error, falling back to local: {e}"
+                )
+
+        return self._local_execution_explanation(
+            scan_result, exec_result, policy_violations
+        )
+
+    # ------------------------------------------------------------------ #
+    # Sarvam AI — prompt builders
+    # ------------------------------------------------------------------ #
+
+    def _sarvam_scan_explanation(
+        self,
+        code: str,
+        scan_result: ScanResult,
+        violations: List[str],
+    ) -> str:
+        code_snippet = (code or "")[:500].strip() or "(empty)"
+        violations_str = ", ".join(violations) if violations else "None"
+        warnings_str = (
+            ", ".join(scan_result.warnings) if scan_result.warnings else "None"
+        )
+        patterns_str = (
+            ", ".join(scan_result.detected_patterns)
+            if scan_result.detected_patterns
+            else "None"
+        )
+
+        prompt = f"""You are a security expert reviewing AI-generated code.
+Explain the following static analysis results in a concise paragraph (3-5 sentences) for a developer.
+
+Risk level: {scan_result.risk_level}
+Blocked: {scan_result.blocked}
+Detected patterns: {patterns_str}
+Warnings: {warnings_str}
+Policy violations: {violations_str}
+
+Code snippet:
+{code_snippet}
+
+Briefly explain: what risk was found, why it matters, and what the developer should do next.
+Respond in language: {self.language}"""
+
+        return self._call_sarvam(prompt)
+
+    def _sarvam_execution_explanation(
+        self,
+        code: str,
+        scan_result: ScanResult,
+        exec_result: ExecutionResult,
+        violations: List[str],
+    ) -> str:
+        code_snippet = (code or "")[:500].strip() or "(empty)"
+        violations_str = ", ".join(violations) if violations else "None"
+        warnings_str = (
+            ", ".join(scan_result.warnings) if scan_result.warnings else "None"
+        )
+        stdout_snippet = (exec_result.stdout or "")[:300]
+        stderr_snippet = (exec_result.stderr or "")[:300]
+
+        prompt = f"""You are a security expert reviewing AI-generated code executed in a sandbox.
+Explain the execution result in a concise paragraph (3-5 sentences) for a developer.
+
+Risk level: {scan_result.risk_level}
+Execution status: {exec_result.status}
+Exit code: {exec_result.exit_code}
+Execution time: {exec_result.execution_time:.2f}s
+Stdout (truncated): {stdout_snippet or "(none)"}
+Stderr (truncated): {stderr_snippet or "(none)"}
+Warnings: {warnings_str}
+Policy violations: {violations_str}
+
+Briefly explain: what happened during execution, any errors or security concerns, and suggested next steps.
+Respond in language: {self.language}"""
+
+        return self._call_sarvam(prompt)
+
+    # ------------------------------------------------------------------ #
+    # Sarvam AI — HTTP client
+    # ------------------------------------------------------------------ #
+
+    def _call_sarvam(self, prompt: str) -> str:
+        """
+        Call the Sarvam AI chat completions endpoint.
+
+        Auth note: Sarvam requires the 'api-subscription-key' header.
+        Using 'Authorization: Bearer' alone will fail with 401/403.
+
+        Raises:
+            SarvamAPIError: on non-2xx HTTP responses.
+            requests.RequestException: on network/timeout failures.
+        """
+        headers = {
+            # Primary auth method per Sarvam docs
+            "api-subscription-key": self.api_key,
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            "max_tokens": self.max_tokens,
+            "temperature": 0.2,  # low temp = focused, deterministic output
+            "reasoning_effort": "low",  # keep latency down for inline explanations
+        }
+
+        logger.debug(f"Calling Sarvam AI [{self.model}] prompt_len={len(prompt)}")
+
+        response = requests.post(
+            SARVAM_CHAT_URL,
+            json=payload,
+            headers=headers,
+            timeout=self.timeout,
+        )
+
+        if not response.ok:
+            raise SarvamAPIError(
+                f"Sarvam API returned {response.status_code}: {response.text[:300]}"
+            )
+
+        data = response.json()
+
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError) as e:
+            raise SarvamAPIError(f"Unexpected Sarvam response shape: {e} — {data}")
+
+        if not content or not content.strip():
+            raise SarvamAPIError("Sarvam returned an empty response.")
+
+        return content.strip()
+
+    # ------------------------------------------------------------------ #
+    # Local fallback — rule-based explanations
+    # ------------------------------------------------------------------ #
+
+    def _local_scan_explanation(
+        self,
+        scan_result: ScanResult,
+        violations: List[str],
+    ) -> str:
+        """Rule-based explanation for scan results (no API call required)."""
+        violations = violations or []
+        patterns = scan_result.detected_patterns or []
+        warnings = scan_result.warnings or []
+
+        if scan_result.blocked:
+            pattern_str = ", ".join(patterns[:3]) or "unknown patterns"
+            violation_str = (
+                f" Policy violations: {', '.join(violations[:3])}."
+                if violations
+                else ""
+            )
+            return (
+                f"❌ Code was blocked due to high-risk patterns: {pattern_str}."
+                f"{violation_str} Execution is not permitted."
+            )
+
+        if scan_result.risk_level == "HIGH":
+            warning_str = ", ".join(warnings[:2]) or "unspecified risks"
+            return (
+                f"⚠️ High-risk code detected: {warning_str}. "
+                f"Review carefully before executing in any environment."
+            )
+
+        if scan_result.risk_level == "MEDIUM":
+            warning_str = ", ".join(warnings[:2]) or "potential issues"
+            return (
+                f"ℹ️ Medium-risk patterns found: {warning_str}. "
+                f"Consider reviewing this code before execution."
+            )
+
+        return "✅ Code appears safe based on static analysis."
+
+    def _local_execution_explanation(
+        self,
+        scan_result: ScanResult,
+        exec_result: ExecutionResult,
+        violations: List[str] = None,
+    ) -> str:
+        """Rule-based explanation for execution results (no API call required)."""
+        violations = violations or []
+
+        if exec_result.status == "success":
+            base = (
+                f"✅ Code executed successfully in sandbox "
+                f"(exit code {exec_result.exit_code}) "
+                f"in {exec_result.execution_time:.2f}s."
+            )
+            if violations:
+                base += (
+                    f" Note: policy warnings remain active: "
+                    f"{', '.join(violations[:2])}."
+                )
+            return base
+
+        if exec_result.status == "timeout":
+            return (
+                "⏱️ Execution timed out. The code may contain an infinite loop "
+                "or unexpectedly heavy computation. Review any loops and I/O calls."
+            )
+
+        if exec_result.status == "error":
+            stderr = (exec_result.stderr or "").strip()[:200] or "No stderr captured."
+            return (
+                f"❌ Runtime error during sandbox execution: {stderr} "
+                f"Check the code for logical or dependency issues."
+            )
+
+        return "❓ Unexpected execution outcome. Review the sandbox logs for details."
+
+
+=== FILE: backend/main.py ===
+
+"""
+FastAPI application for SafeRun AI.
+Provides endpoints for code scanning, execution, and history.
+Serves static frontend at root.
+"""
+
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+
+from backend.config import settings
+from backend.database import init_db
+from backend.schemas import (
+    ScanRequest,
+    ScanResponse,
+    ExecuteRequest,
+    ExecuteResponse,
+    HistoryEntry,
+    HealthResponse,
+)
+from backend.scanner import CodeScanner
+from backend.policy_engine import PolicyEngine
+from backend.sandbox import SandboxExecutor
+from backend.audit import AuditStore
+from backend.explanations import ExplanationGenerator
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Global components
+scanner = CodeScanner()
+policy_engine = PolicyEngine(policy_path=settings.policy_file)
+sandbox = SandboxExecutor(image_name=settings.sandbox_image)
+audit_store = AuditStore(db_url=settings.database_url)
+explanation_gen = ExplanationGenerator(api_key=settings.sarvam_api_key)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown events."""
+    logger.info("Starting SafeRun AI Backend...")
+    init_db()
+    logger.info("Database initialized.")
+    yield
+    logger.info("Shutting down...")
+
+
+app = FastAPI(
+    title="SafeRun AI Backend",
+    description="Secure sandbox execution for AI-generated code",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health():
+    """Health check endpoint."""
+    return HealthResponse(status="ok", service="SafeRun AI Backend")
+
+
+@app.post("/scan", response_model=ScanResponse)
+async def scan_code(request: ScanRequest):
+    """
+    Perform static security scan on provided code without execution.
+    Returns risk level, warnings, and detected patterns.
+    """
+    try:
+        scan_result = scanner.scan(request.code)
+        policy_violations = policy_engine.check_code(request.code, scan_result)
+        blocked = scan_result.blocked or bool(policy_violations)
+        explanation = explanation_gen.generate_scan_explanation(
+            code=request.code,
+            scan_result=scan_result,
+            policy_violations=policy_violations,
+        )
+        return ScanResponse(
+            risk_level=scan_result.risk_level,
+            blocked=blocked,
+            warnings=scan_result.warnings,
+            detected_patterns=scan_result.detected_patterns,
+            policy_violations=policy_violations,
+            explanation=explanation,
+        )
+    except Exception as e:
+        logger.exception("Scan failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Scanning error: {str(e)}",
+        )
+
+
+@app.post("/execute", response_model=ExecuteResponse)
+async def execute_code(request: ExecuteRequest):
+    """
+    Execute code in sandbox after scanning and policy enforcement.
+    If blocked and override=False, refuses execution.
+    """
+    scan_result = scanner.scan(request.code)
+    policy_violations = policy_engine.check_code(request.code, scan_result)
+    blocked = scan_result.blocked or bool(policy_violations)
+
+    if blocked and not request.override:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Execution blocked by security policy. Use override=true at your own risk.",
+        )
+
+    try:
+        exec_result = sandbox.execute(
+            code=request.code,
+            timeout_seconds=policy_engine.get_max_execution_time(),
+            memory_mb=policy_engine.get_max_memory_mb(),
+            cpu_cores=policy_engine.get_max_cpu_cores(),
+            network_enabled=policy_engine.get_network_enabled(),
+            filesystem_write_enabled=policy_engine.get_filesystem_write_enabled(),
+        )
+    except Exception as e:
+        logger.exception("Sandbox execution failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Sandbox error: {str(e)}",
+        )
+
+    audit_record = audit_store.create_record(
+        code=request.code,
+        scan_risk_level=scan_result.risk_level,
+        blocked=blocked,
+        warnings=scan_result.warnings,
+        stdout=exec_result.stdout,
+        stderr=exec_result.stderr,
+        exit_code=exec_result.exit_code,
+        execution_time=exec_result.execution_time,
+        status=exec_result.status,
+    )
+
+    explanation = explanation_gen.generate_execution_explanation(
+        code=request.code,
+        scan_result=scan_result,
+        exec_result=exec_result,
+        policy_violations=policy_violations,
+    )
+
+    return ExecuteResponse(
+        status=exec_result.status,
+        risk_level=scan_result.risk_level,
+        blocked=blocked,
+        stdout=exec_result.stdout,
+        stderr=exec_result.stderr,
+        warnings=scan_result.warnings,
+        execution_time=exec_result.execution_time,
+        exit_code=exec_result.exit_code,
+        container_status=exec_result.container_status,
+        explanation=explanation,
+    )
+
+
+@app.get("/history", response_model=list[HistoryEntry])
+async def get_history(limit: int = 20):
+    """Return last N execution records."""
+    records = audit_store.get_recent(limit=limit)
+    return records
+
+
+# Serve static frontend files (must be after all API routes)
+static_dir = Path(__file__).parent.parent / "frontend" / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+
+
+=== FILE: backend/models.py ===
+
+"""
+SQLAlchemy ORM models for audit storage.
+"""
+
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+
+class ExecutionRecord(Base):
+    """Store execution audit records."""
+
+    __tablename__ = "executions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code_hash = Column(String(64), nullable=False, index=True)
+    risk_level = Column(String(20), nullable=False)
+    blocked = Column(Integer, default=0)  # 0 = False, 1 = True
+    warnings = Column(Text, default="")  # JSON string
+    stdout = Column(Text, default="")
+    stderr = Column(Text, default="")
+    exit_code = Column(Integer, nullable=True)
+    execution_time = Column(Float, default=0.0)
+    status = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "code_hash": self.code_hash,
+            "risk_level": self.risk_level,
+            "blocked": bool(self.blocked),
+            "warnings": self.warnings,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "exit_code": self.exit_code,
+            "execution_time": self.execution_time,
+            "status": self.status,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+=== FILE: backend/policies/default_policy.yaml ===
+
+max_execution_time_seconds: 10
+max_memory_mb: 256
+max_cpu_cores: 1
+max_code_size_kb: 100
+network_enabled: false
+filesystem_write_enabled: false
+allowed_imports:
+  - math
+  - random
+  - datetime
+  - json
+  - re
+  - collections
+  - itertools
+  - statistics
+blocked_imports:
+  - os
+  - subprocess
+  - socket
+  - requests
+  - urllib
+  - urllib3
+  - shutil
+  - importlib
+  - pickle
+  - ctypes
+  - sys
+  - builtins
+blocked_calls:
+  - eval
+  - exec
+  - compile
+  - __import__
+  - breakpoint
+  - subprocess.run
+  - subprocess.Popen
+  - subprocess.call
+  - os.system
+  - os.popen
+  - os.remove
+  - os.unlink
+  - os.rmdir
+  - os.removedirs
+  - shutil.rmtree
+  - shutil.move
+  - open
+
+
+=== FILE: backend/policy_engine.py ===
+
+"""
+Policy engine for loading YAML rules and checking compliance.
+Integrates with scanner results and code.
+"""
+
+import yaml
+from pathlib import Path
+from typing import List, Dict, Any
+from backend.scanner import ScanResult
+
+
+class PolicyEngine:
+    """Loads policy from YAML and evaluates code against it."""
+
+    def __init__(self, policy_path: str):
+        self.policy_path = Path(policy_path)
+        self.policy = self._load_policy()
+
+    def _load_policy(self) -> Dict[str, Any]:
+        """Load YAML policy file. Return default if missing."""
+        default_policy = {
+            "max_execution_time_seconds": 10,
+            "max_memory_mb": 256,
+            "max_cpu_cores": 1,
+            "max_code_size_kb": 100,
+            "network_enabled": False,
+            "filesystem_write_enabled": False,
+            "allowed_imports": ["math", "random", "datetime", "json", "re"],
+            "blocked_imports": [
+                "os",
+                "subprocess",
+                "socket",
+                "requests",
+                "urllib",
+                "shutil",
+                "importlib",
+                "pickle",
+            ],
+            "blocked_calls": [
+                "eval",
+                "exec",
+                "compile",
+                "__import__",
+                "subprocess.run",
+                "subprocess.Popen",
+                "os.system",
+                "os.remove",
+                "shutil.rmtree",
+            ],
+        }
+        if not self.policy_path.exists():
+            # Write default for future
+            self.policy_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.policy_path, "w") as f:
+                yaml.safe_dump(default_policy, f, default_flow_style=False)
+            return default_policy
+
+        with open(self.policy_path, "r") as f:
+            loaded = yaml.safe_load(f)
+            # Merge with defaults for missing keys
+            for k, v in default_policy.items():
+                if k not in loaded:
+                    loaded[k] = v
+            return loaded
+
+    def check_code(self, code: str, scan_result: ScanResult) -> List[str]:
+        """
+        Check code against policy rules.
+        Returns list of policy violation descriptions.
+        """
+        violations = []
+
+        # Code size check
+        code_size_kb = len(code.encode("utf-8")) / 1024
+        if code_size_kb > self.policy["max_code_size_kb"]:
+            violations.append(
+                f"Code size exceeds policy limit: {code_size_kb:.1f} KB > {self.policy['max_code_size_kb']} KB"
+            )
+
+        # Blocked imports from scanner patterns
+        for pattern in scan_result.detected_patterns:
+            if pattern.startswith("import_") or pattern.startswith("import_from_"):
+                import_name = pattern.split("_", 1)[-1]
+                if import_name in self.policy["blocked_imports"]:
+                    violations.append(f"Blocked import: {import_name}")
+
+        # Blocked calls
+        for pattern in scan_result.detected_patterns:
+            if pattern.startswith("call_"):
+                call_name = pattern[5:].replace("_", ".")
+                for blocked in self.policy["blocked_calls"]:
+                    if blocked == call_name or call_name.endswith(blocked):
+                        violations.append(f"Blocked call: {call_name}")
+
+        # Check network policy
+        if not self.policy["network_enabled"] and any(
+            pat.startswith("import_")
+            and pat in ["import_socket", "import_requests", "import_urllib"]
+            for pat in scan_result.detected_patterns
+        ):
+            violations.append(
+                "Network access is disabled by policy but code imports networking module"
+            )
+
+        # Check filesystem write policy
+        if (
+            not self.policy["filesystem_write_enabled"]
+            and "file_write" in scan_result.detected_patterns
+        ):
+            violations.append(
+                "Filesystem write access is disabled by policy but code attempts to write files"
+            )
+
+        return violations
+
+    def get_max_execution_time(self) -> int:
+        return self.policy.get("max_execution_time_seconds", 10)
+
+    def get_max_memory_mb(self) -> int:
+        return self.policy.get("max_memory_mb", 256)
+
+    def get_max_cpu_cores(self) -> float:
+        return float(self.policy.get("max_cpu_cores", 1))
+
+    def get_network_enabled(self) -> bool:
+        return self.policy.get("network_enabled", False)
+
+    def get_filesystem_write_enabled(self) -> bool:
+        return self.policy.get("filesystem_write_enabled", False)
+
+
+=== FILE: backend/sandbox.py ===
+
+"""
+Docker-based sandbox executor.
+Manages container lifecycle, resource limits, and output capture.
+"""
+
+import time
+import tempfile
+import logging
+from pathlib import Path
+from typing import Optional
+from dataclasses import dataclass
+
+import docker
+from docker.errors import DockerException, ImageNotFound, APIError
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ExecutionResult:
+    """Result of sandbox execution."""
+
+    status: str  # success, timeout, error, killed
+    stdout: str
+    stderr: str
+    exit_code: Optional[int]
+    execution_time: float
+    container_status: str
+
+
+class SandboxExecutor:
+    """Executes Python code inside a Docker container with security restrictions."""
+
+    def __init__(self, image_name: str):
+        self.image_name = image_name
+        self._init_docker_client()
+
+    def _init_docker_client(self):
+        """Initialize Docker client, handle errors gracefully."""
+        try:
+            self.docker_client = docker.from_env()
+            # Test connection
+            self.docker_client.ping()
+            logger.info("Docker client connected.")
+        except DockerException as e:
+            logger.error(f"Docker not available: {e}")
+            self.docker_client = None
+
+    def _ensure_image(self) -> bool:
+        """Check if sandbox image exists."""
+        if self.docker_client is None:
+            return False
+        try:
+            self.docker_client.images.get(self.image_name)
+            return True
+        except ImageNotFound:
+            logger.error(
+                f"Sandbox image '{self.image_name}' not found. Build it using: cd sandbox_image && docker build -t {self.image_name} ."
+            )
+            return False
+        except APIError as e:
+            logger.error(f"Docker API error: {e}")
+            return False
+
+    def execute(
+        self,
+        code: str,
+        timeout_seconds: int = 10,
+        memory_mb: int = 256,
+        cpu_cores: float = 1.0,
+        network_enabled: bool = False,
+        filesystem_write_enabled: bool = False,
+    ) -> ExecutionResult:
+        """
+        Execute code in sandbox container
+        Args:
+            code: Python code string
+            timeout_seconds: Maximum execution time
+            memory_mb: Memory limit in MB
+            cpu_cores: CPU cores limit (e.g., 0.5, 1.0)
+            network_enabled: Allow network access (default False for security)
+            filesystem_write_enabled: Allow write to container filesystem (default False)
+        """
+        if not self.docker_client:
+            return ExecutionResult(
+                status="error",
+                stdout="",
+                stderr="Docker daemon not available. Please install Docker and ensure it is running.",
+                exit_code=-1,
+                execution_time=0.0,
+                container_status="docker_unavailable",
+            )
+
+        if not self._ensure_image():
+            return ExecutionResult(
+                status="error",
+                stdout="",
+                stderr=f"Sandbox image '{self.image_name}' not found. Build it first.",
+                exit_code=-1,
+                execution_time=0.0,
+                container_status="image_missing",
+            )
+
+        # Create temporary directory for code file
+        with tempfile.TemporaryDirectory(prefix="saferun_") as tmpdir:
+            tmp_path = Path(tmpdir)
+            code_file = tmp_path / "script.py"
+            code_file.write_text(code, encoding="utf-8")
+            # Make script readable and directory traversable for the container user
+            code_file.chmod(0o644)  # rw-r--r--
+            tmp_path.chmod(0o755)  # drwxr-xr-x
+
+            # Container configuration
+            mem_limit = f"{memory_mb}m"
+            nano_cpus = int(cpu_cores * 1e9) if cpu_cores else None
+            pids_limit = 64
+            read_only_rootfs = True
+            user = "sandbox"  # non-root user (exists in the sandbox image)
+            network_mode = "none" if not network_enabled else "bridge"
+            # IMPORTANT: auto_remove=False so we can fetch logs before removal
+            auto_remove = False
+            mount_rw = filesystem_write_enabled
+            mount_path = "/sandbox"
+
+            cap_drop = ["ALL"]
+            security_opt = ["no-new-privileges:true"]
+
+            start_time = time.time()
+            container = None
+            try:
+                # Run container (detached)
+                container = self.docker_client.containers.run(
+                    image=self.image_name,
+                    command=["python", "-u", "/sandbox/script.py"],
+                    mem_limit=mem_limit,
+                    nano_cpus=nano_cpus,
+                    pids_limit=pids_limit,
+                    read_only=read_only_rootfs,
+                    user=user,
+                    network_disabled=not network_enabled,
+                    network=network_mode,
+                    auto_remove=auto_remove,
+                    detach=True,
+                    volumes={
+                        tmpdir: {"bind": mount_path, "mode": "rw" if mount_rw else "ro"}
+                    },
+                    cap_drop=cap_drop,
+                    security_opt=security_opt,
+                    hostname="sandbox",
+                    domainname="local",
+                    privileged=False,
+                )
+
+                # Wait for completion with timeout
+                result = container.wait(timeout=timeout_seconds)
+                exit_code = result["StatusCode"]
+
+                # Fetch logs (container still exists)
+                stdout_logs = container.logs(stdout=True, stderr=False).decode(
+                    "utf-8", errors="replace"
+                )
+                stderr_logs = container.logs(stdout=False, stderr=True).decode(
+                    "utf-8", errors="replace"
+                )
+
+                execution_time = time.time() - start_time
+                status = "success" if exit_code == 0 else "error"
+
+                return ExecutionResult(
+                    status=status,
+                    stdout=stdout_logs,
+                    stderr=stderr_logs,
+                    exit_code=exit_code,
+                    execution_time=execution_time,
+                    container_status="completed",
+                )
+
+            except docker.errors.ContainerError as e:
+                execution_time = time.time() - start_time
+                return ExecutionResult(
+                    status="error",
+                    stdout=e.stdout.decode() if e.stdout else "",
+                    stderr=e.stderr.decode() if e.stderr else str(e),
+                    exit_code=e.exit_code,
+                    execution_time=execution_time,
+                    container_status="container_error",
+                )
+            except docker.errors.APIError as e:
+                logger.exception("Docker API error")
+                return ExecutionResult(
+                    status="error",
+                    stdout="",
+                    stderr=f"Docker API error: {str(e)}",
+                    exit_code=-1,
+                    execution_time=time.time() - start_time,
+                    container_status="api_error",
+                )
+            except Exception as e:
+                logger.exception("Unexpected sandbox error")
+                return ExecutionResult(
+                    status="error",
+                    stdout="",
+                    stderr=f"Unexpected error: {str(e)}",
+                    exit_code=-1,
+                    execution_time=time.time() - start_time,
+                    container_status="exception",
+                )
+            finally:
+                if container:
+                    try:
+                        container.remove(force=True)
+                    except Exception:
+                        pass
+
+
+=== FILE: backend/scanner.py ===
+
+"""
+AST-based static code scanner.
+Detects dangerous imports, calls, patterns, and infinite loops.
+"""
+
+import ast
+from typing import List
+from dataclasses import dataclass, field
+
+# Dangerous patterns
+DANGEROUS_IMPORTS = {
+    "os",
+    "subprocess",
+    "socket",
+    "requests",
+    "urllib",
+    "urllib3",
+    "shutil",
+    "importlib",
+    "pickle",
+    "shelve",
+    "pty",
+    "fcntl",
+    "ctypes",
+    "winreg",
+    "msvcrt",
+}
+
+DANGEROUS_CALLS = {
+    "eval",
+    "exec",
+    "compile",
+    "__import__",
+    "breakpoint",
+    "subprocess.run",
+    "subprocess.Popen",
+    "subprocess.call",
+    "os.system",
+    "os.popen",
+    "os.remove",
+    "os.unlink",
+    "os.rmdir",
+    "os.removedirs",
+    "shutil.rmtree",
+    "shutil.move",
+    "open",  # special handling for write mode
+}
+
+SUSPICIOUS_PATHS = {
+    "/etc",
+    "/root",
+    "/home",
+    "/var",
+    "~/.ssh",
+    ".env",
+    "C:\\Windows",
+    "C:\\System32",
+    "\\System",
+    "\\Library",
+}
+
+# Additionl call patterns
+WRITE_MODE_NAMES = {"w", "wb", "a", "ab", "w+", "a+", "x"}
+
+
+@dataclass
+class ScanResult:
+    """Result  of static code scan."""
+
+    risk_level: str  # LOW, MEDIUM, HIGH, BLOCKED
+    blocked: bool
+    warnings: List[str] = field(default_factory=list)
+    detected_patterns: List[str] = field(default_factory=list)
+
+
+class CodeScanner:
+    """AST Scanner for security analysis"""
+
+    def scan(self, code: str) -> ScanResult:
+        """
+        Scan Python code and return risk assessment.
+        """
+        if not code or not code.strip():
+            return ScanResult(
+                risk_level="LOW",
+                blocked=False,
+                warnings=["Empty code provided"],
+                detected_patterns=["empty"],
+            )
+
+        # Check code size (heuristic)
+        if len(code) > 100 * 1024:  # 100KB
+            return ScanResult(
+                risk_level="HIGH",
+                blocked=True,
+                warnings=["Code exceeds maximum size limit"],
+                detected_patterns=["size_exceeded"],
+            )
+
+        try:
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            return ScanResult(
+                risk_level="HIGH",
+                blocked=True,
+                warnings=[f"Syntax error: {str(e)}"],
+                detected_patterns=["syntax_error"],
+            )
+
+        warnings = []
+        patterns = []
+        risk_score = 0  # 0-10, higher = more dangerous
+        blocked = False
+
+        # Analyze AST
+        for node in ast.walk(tree):
+            # Dangerous imports
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    name = alias.name.split(".")[0]
+
+                    if name in DANGEROUS_IMPORTS:
+                        warnings.append(f"Dangerous import: {name}")
+                        patterns.append(f"import_{name}")
+                        risk_score += 2
+                        blocked = True
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module.split(".")[0] if node.module else ""
+                if module in DANGEROUS_IMPORTS:
+                    warnings.append(f"Dangerous import from: {module}")
+                    patterns.append(f"import_from_{module}")
+                    risk_score += 2
+                    blocked = True
+
+            # Dangerous function calls
+            elif isinstance(node, ast.Call):
+                func_name = self._get_func_name(node.func)
+                if func_name in DANGEROUS_CALLS:
+                    # Special case: open with write mode
+                    if func_name == "open":
+                        if self._is_write_mode(node):
+                            warnings.append("File write operation detected.")
+                            patterns.append("file_write")
+                            risk_score += 2
+                            if not blocked:  # Write may be allowed by policy, but scanner flags as HIGH
+                                blocked = False  # not auto-block; policy decides
+                            else:
+                                warnings.append(f"Dangerous call: {func_name}")
+                                patterns.append(f"call_{func_name.replace('.', '_')}")
+                                risk_score += 3
+                                blocked = True
+
+            # Suspicious string literals (paths) - check all string constants
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                path = node.value
+                for susp in SUSPICIOUS_PATHS:
+                    if susp in path and len(path) > 3:
+                        warnings.append(
+                            f"Suspicious path reference: {path[:50]}"
+                        )
+                        patterns.append("suspicious_path")
+                        risk_score += 1
+
+            # Detect infinite loop candidates (while True with no break detection is heuristic)
+            if isinstance(node, ast.While):
+                if (
+                    isinstance(node.test, ast.Constant)
+                    and node.test.value is True
+                ):
+                    # Check for break/return inside body (simplistic)
+                    has_exit = any(
+                        isinstance(sub, (ast.Break, ast.Return))
+                        for sub in ast.walk(node)
+                    )
+                    if not has_exit:
+                        warnings.append(
+                            "Potential infinite loop: 'while True' without break"
+                        )
+                        patterns.append("infinite_loop")
+                        risk_score += 2
+
+        # Determine risk level (after processing all nodes)
+        if blocked:
+            risk_level = "BLOCKED"
+        elif risk_score >= 5:
+            risk_level = "HIGH"
+        elif risk_score >= 2:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
+
+        # Remove duplicates
+        warnings = list(dict.fromkeys(warnings))
+        patterns = list(dict.fromkeys(patterns))
+
+        return ScanResult(
+            risk_level=risk_level,
+            blocked=blocked,
+            warnings=warnings,
+            detected_patterns=patterns,
+        )
+
+    def _get_func_name(self, node) -> str:
+        """Extract fully qualified function name from AST node."""
+        if isinstance(node, ast.Name):
+            return node.id
+        elif isinstance(node, ast.Attribute):
+            # Recursively build name
+            parts = []
+            current = node
+            while isinstance(current, ast.Attribute):
+                parts.append(current.attr)
+                current = current.value
+            if isinstance(current, ast.Name):
+                parts.append(current.id)
+            return ".".join(reversed(parts))
+        return "unknown"
+
+    def _is_write_mode(self, call_node: ast.Call) -> bool:
+        """Check if open() call has write mode."""
+        if len(call_node.args) >= 2:
+            mode_arg = call_node.args[1]
+            if isinstance(mode_arg, ast.Constant) and isinstance(mode_arg.value, str):
+                return any(mode in mode_arg.value for mode in WRITE_MODE_NAMES)
+
+        # check keyword arg 'mode'
+        for kw in call_node.keywords:
+            if kw.arg == "mode" and isinstance(kw.value, ast.Constant):
+                if isinstance(kw.value.value, str):
+                    return any(mode in kw.value.value for mode in WRITE_MODE_NAMES)
+        return False
+
+
+=== FILE: backend/schemas.py ===
+
+"""Pydantic schemes for API request/response validation."""
+
+from typing import List, Optional
+from pydantic import BaseModel
+
+
+class CodeRequest(BaseModel):
+    code: str
+
+
+# /scan
+class ScanRequest(BaseModel):
+    code: str
+
+
+class ScanResponse(BaseModel):
+    risk_level: str  # LOW, MEDIUM, HIGH, BLOCKED
+    blocked: bool
+    warnings: List[str]
+    detected_patterns: List[str]
+    policy_violations: List[str]
+    explanation: str
+
+
+# /execute
+class ExecuteRequest(BaseModel):
+    code: str
+    override: bool = False
+
+
+class ExecuteResponse(BaseModel):
+    status: str  # success, timeout, error, killed
+    risk_level: str
+    blocked: bool
+    stdout: str
+    stderr: str
+    warnings: List[str]
+    execution_time: float
+    exit_code: Optional[int]
+    container_status: str
+    explanation: str
+
+
+# /history
+class HistoryEntry(BaseModel):
+    id: int
+    code_hash: str
+    risk_level: str
+    blocked: bool
+    warnings: str  # JSON string
+    stdout: str
+    stderr: str
+    exit_code: Optional[int]
+    execution_time: float
+    status: str
+    created_at: str
+
+
+# /health
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+
+
+# /Info
+class InfoResponse(BaseModel):
+    name: str
+    version: str
+    description: str
+
+
+=== FILE: backend/utils.py ===
+
+"""
+Utility functions for backend.
+"""
+
+import hashlib
+import re
+
+def hash_code(code: str) -> str:
+    """Return SHA256 hash of code string."""
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def truncate_string(s: str, max_len: int = 500) -> str:
+    """Truncate string for logging."""
+    if len(s) <= max_len:
+        return s
+    return s[:max_len] + "..."
+
+
+def sanitize_log(text: str) -> str:
+    """Remove sensitive patterns from logs."""
+    # Remove potential API keys or secrets (simple pattern)
+    patterns = [
+        (r"(api[_-]?key['\"]?\s*[:=]\s*['\"])[^'\"]+(['\"])", r"\1[REDACTED]\2"),
+        (r"(token['\"]?\s*[:=]\s*['\"])[^'\"]+(['\"])", r"\1[REDACTED]\2"),
+    ]
+    for pat, repl in patterns:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    return text
+
+
+=== FILE: cli/__init__.py ===
+
+
+
+=== FILE: cli/main.py ===
+
+"""
+SafeRun CLI - Security check for Python files.
+Usage: saferun <file>      Check if a file is safe
+       saferun run <file>   Execute in sandbox
+       saferun history      Show execution history
+"""
+
+import sys
+import click
+import requests
+from pathlib import Path
+
+API_BASE = "http://localhost:8000"
+
+
+def get_code(file_path):
+    """Read file and return code string."""
+    path = Path(file_path)
+    if not path.exists():
+        click.secho(f"Error: File '{file_path}' not found.", fg="red")
+        sys.exit(1)
+    if path.suffix not in (".py", ".txt"):
+        click.secho(f"Warning: '{file_path}' is not a .py file.", fg="yellow")
+    return path.read_text(encoding="utf-8")
+
+
+def check_api():
+    """Verify backend is reachable."""
+    try:
+        requests.get(f"{API_BASE}/health", timeout=2)
+    except requests.ConnectionError:
+        click.secho(
+            "Error: Backend not running. Start it with:\n"
+            "  uvicorn backend.main:app --host 0.0.0.0 --port 8000",
+            fg="red",
+        )
+        sys.exit(1)
+
+
+@click.group(invoke_without_command=True)
+@click.argument("file", type=click.Path(), required=False, default=None)
+@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
+@click.pass_context
+def cli(ctx, file, api):
+    """
+    SafeRun AI - Security check for Python files.
+
+    Default behavior: scans the file for security risks without executing it.
+
+    \b
+    Examples:
+      saferun script.py          Check if script.py is safe
+      saferun run script.py      Execute script.py in sandbox
+      saferun history            Show recent execution history
+    """
+    # Only try to check a file if no subcommand is being invoked
+    if ctx.invoked_subcommand is None:
+        if file:
+            ctx.invoke(check, file=file, api=api)
+        else:
+            click.echo(ctx.get_help())
+
+@cli.command()
+@click.argument("file", type=click.Path())
+@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
+def check(file, api):
+    """Scan a Python file for security risks. (Default command)"""
+    code = get_code(file)
+    filename = Path(file).name
+    check_api()
+
+    click.echo(f"Checking {filename}...")
+
+    try:
+        resp = requests.post(f"{api}/scan", json={"code": code}, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        click.secho(f"Error: {e}", fg="red")
+        sys.exit(1)
+
+    risk = data["risk_level"]
+    blocked = data["blocked"]
+    warnings = data.get("warnings", [])
+    violations = data.get("policy_violations", [])
+    patterns = data.get("detected_patterns", [])
+
+    # Print results in ruff-like style
+    if risk == "LOW":
+        click.echo(f"\n{click.style('PASSED', fg='green', bold=True)} {filename} appears safe.")
+        click.echo(data.get("explanation", ""))
+        sys.exit(0)
+
+    elif risk == "MEDIUM":
+        click.echo(f"\n{click.style('WARNING', fg='yellow', bold=True)} {filename} has potential risks.")
+        for w in warnings:
+            click.secho(f"  • {w}", fg="yellow")
+        click.echo(f"\n{data.get('explanation', '')}")
+        sys.exit(0)
+
+    elif risk == "HIGH":
+        click.echo(f"\n{click.style('FAILED', fg='red', bold=True)} {filename} contains high-risk patterns.")
+        for w in warnings:
+            click.secho(f"  • {w}", fg="red")
+        if violations:
+            click.echo(f"\nPolicy violations:")
+            for v in violations:
+                click.secho(f"  • {v}", fg="red")
+        click.echo(f"\n{data.get('explanation', '')}")
+        sys.exit(1)
+
+    elif risk == "BLOCKED":
+        click.echo(f"\n{click.style('BLOCKED', fg='red', bold=True)} {filename} would be blocked from execution.")
+        for w in warnings:
+            click.secho(f"  • {w}", fg="red")
+        if violations:
+            click.echo(f"\nPolicy violations:")
+            for v in violations:
+                click.secho(f"  • {v}", fg="red")
+        click.echo(f"\n{data.get('explanation', '')}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument("file", type=click.Path())
+@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
+@click.option("--override", is_flag=True, help="Override safety blocks")
+def run(file, api, override):
+    """Execute a Python file in the sandbox."""
+    code = get_code(file)
+    filename = Path(file).name
+    check_api()
+
+    if override:
+        click.secho("Override enabled: bypassing safety blocks.", fg="yellow")
+
+    click.echo(f"Running {filename} in sandbox...")
+
+    try:
+        resp = requests.post(
+            f"{api}/execute",
+            json={"code": code, "override": override},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.HTTPError as e:
+        if e.response.status_code == 403:
+            click.secho(
+                "\nExecution blocked by security policy.\n"
+                "Use --override to force execution at your own risk.",
+                fg="red",
+            )
+            sys.exit(1)
+        click.secho(f"Error: {e.response.text}", fg="red")
+        sys.exit(1)
+    except Exception as e:
+        click.secho(f"Error: {e}", fg="red")
+        sys.exit(1)
+
+    status = data["status"]
+    if status == "success":
+        click.secho(f"\n{click.style('SUCCESS', fg='green', bold=True)} Executed in {data['execution_time']:.3f}s")
+    elif status == "timeout":
+        click.secho(f"\n{click.style('TIMEOUT', fg='yellow', bold=True)} Execution exceeded time limit.")
+    else:
+        click.secho(f"\n{click.style('ERROR', fg='red', bold=True)} Exit code: {data['exit_code']}")
+
+    if data.get("stdout"):
+        click.echo(f"\n{click.style('stdout:', bold=True)}")
+        click.echo(data["stdout"])
+
+    if data.get("stderr"):
+        click.echo(f"\n{click.style('stderr:', fg='yellow', bold=True)}")
+        click.secho(data["stderr"], fg="yellow")
+
+    click.echo(f"\n{data.get('explanation', '')}")
+
+
+@cli.command()
+@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
+def history(api):
+    """Show recent execution history."""
+    check_api()
+
+    try:
+        resp = requests.get(f"{api}/history", timeout=5)
+        resp.raise_for_status()
+        records = resp.json()
+    except Exception as e:
+        click.secho(f"Error: {e}", fg="red")
+        sys.exit(1)
+
+    if not records:
+        click.echo("No execution history yet.")
+        return
+
+    click.echo(f"\n{'ID':<5} {'Risk':<8} {'Status':<10} {'Time':<8} {'Date'}")
+    click.echo("-" * 55)
+    for r in records[:20]:
+        risk_color = {"LOW": "green", "MEDIUM": "yellow", "HIGH": "red", "BLOCKED": "red"}
+        risk = r["risk_level"]
+        click.echo(
+            f"{r['id']:<5} "
+            f"{click.style(risk, fg=risk_color.get(risk, 'white')):<12} "
+            f"{r['status']:<10} "
+            f"{r['execution_time']:.2f}s   "
+            f"{r['created_at'][:19]}"
+        )
+    click.echo()
+
+
+if __name__ == "__main__":
+    cli()
+
+
+=== FILE: docker-compose.yml ===
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./saferun.db
+      - SANDBOX_IMAGE=saferun-sandbox:latest
+      - SARVAM_API_KEY=${SARVAM_API_KEY:-}
+    volumes:
+      - ./saferun.db:/app/saferun.db
+      - /var/run/docker.sock:/var/run/docker.sock   # Needed to spawn sandbox containers
+      - ./reports:/app/reports
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+
+=== FILE: examples/dangerous_examples.py ===
+
+# Dangerous example - should be blocked
+import os
+
+os.system("rm -rf /important_data")
+print("This should not execute")
+
+
+=== FILE: examples/network_example.py ===
+
+# Network access example (blocked by default)
+import requests
+
+response = requests.get("https://example.com")
+print(response.text)
+
+
+=== FILE: examples/safe_examples.py ===
+
+# Safe example code for testing
+def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+
+print(factorial(5))
+
+
+=== FILE: examples/timeout_example.py ===
+
+# Example that will timeout
+import time
+
+while True:
+    time.sleep(0.1)
+    print("infinite loop")
+
+
+=== FILE: frontend/__init__.py ===
+
+"""SafeRun AI Frontend Module."""
+
+
+=== FILE: frontend/app.py ===
+
+"""
+Streamlit frontend for SafeRun AI.
+Provides code editor, scan/execute buttons, and history viewer.
+"""
+
+import streamlit as st
+import requests
+
+# Configuration
+BACKEND_URL = "http://localhost:8000"
+
+st.set_page_config(
+    page_title="SafeRun AI - Secure Code Sandbox",
+    page_icon=None,
+    layout="wide",
+)
+
+# Sidebar
+with st.sidebar:
+    st.image(
+        "https://via.placeholder.com/150x50?text=SafeRun+AI", use_column_width=True
+    )  # placeholder
+    st.markdown("## SafeRun AI")
+    st.markdown("**Secure sandbox execution for AI-generated code**")
+    st.markdown("---")
+    st.markdown("### Active Policy")
+    try:
+        policy_resp = requests.get(f"{BACKEND_URL}/health", timeout=2)
+        if policy_resp.status_code == 200:
+            st.success("Backend connected")
+        else:
+            st.error("Backend unreachable")
+    except:
+        st.error("Backend not running")
+    st.markdown(
+        "Default policy: **restrictive** (no network, no writes, limited resources)"
+    )
+    st.markdown("---")
+    st.markdown("### Safety Controls")
+    st.markdown("- AST scanner")
+    st.markdown("- Docker sandbox")
+    st.markdown("- Non-root user")
+    st.markdown("- Read-only FS")
+    st.markdown("- Resource limits")
+    st.markdown("---")
+    st.markdown(
+        "[GitHub](https://github.com/predictivemanish/saferun-ai) | [Report Issue](https://github.com/predictivemanish/saferun-ai/issues)"
+    )
+
+# Main area
+st.title("SafeRun AI")
+st.subheader("Run AI-generated Python code in a secure sandbox")
+
+# Code editor
+code_default = """# Example safe code
+def fibonacci(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+
+print(f"fib(10) = {fibonacci(10)}")
+"""
+
+code = st.text_area("Paste your Python code here:", value=code_default, height=300)
+
+col1, col2 = st.columns(2)
+with col1:
+    scan_btn = st.button("Scan Only", type="secondary", use_container_width=True)
+with col2:
+    execute_btn = st.button(
+        "Execute in Sandbox", type="primary", use_container_width=True
+    )
+
+# Output panels
+st.markdown("---")
+st.subheader("Results")
+
+if scan_btn:
+    with st.spinner("Scanning code..."):
+        try:
+            resp = requests.post(f"{BACKEND_URL}/scan", json={"code": code}, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                col_risk, col_block = st.columns(2)
+                with col_risk:
+                    risk = data.get("risk_level", "UNKNOWN")
+                    if risk == "LOW":
+                        st.success(f"Risk Level: {risk}")
+                    elif risk == "MEDIUM":
+                        st.warning(f"Risk Level: {risk}")
+                    elif risk == "HIGH":
+                        st.error(f"Risk Level: {risk}")
+                    else:
+                        st.error(f"Risk Level: {risk} (BLOCKED)")
+                with col_block:
+                    blocked = data.get("blocked", False)
+                    if blocked:
+                        st.error("Blocked by policy")
+                    else:
+                        st.success("Not blocked")
+
+                st.markdown("**Warnings:**")
+                for w in data.get("warnings", []):
+                    st.warning(w)
+
+                st.markdown("**Detected Patterns:**")
+                st.code(", ".join(data.get("detected_patterns", [])), language="text")
+
+                st.markdown("**Policy Violations:**")
+                for v in data.get("policy_violations", []):
+                    st.error(v)
+
+                st.markdown("**Explanation:**")
+                st.info(data.get("explanation", "No explanation generated."))
+            else:
+                st.error(f"Scan failed: HTTP {resp.status_code}")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+if execute_btn:
+    override = st.checkbox(
+        "Override safety blocks? (Only if you trust the code)", value=False
+    )
+    with st.spinner("Executing in sandbox..."):
+        try:
+            resp = requests.post(
+                f"{BACKEND_URL}/execute",
+                json={"code": code, "override": override},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                st.success(f"Execution Status: {data.get('status', 'unknown').upper()}")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Risk Level", data.get("risk_level", "N/A"))
+                with col2:
+                    st.metric("Execution Time", f"{data.get('execution_time', 0):.3f}s")
+                if data.get("blocked"):
+                    st.error("Code was blocked from execution (overridden or policy).")
+                st.markdown("**Stdout:**")
+                st.code(data.get("stdout", ""), language="text")
+                st.markdown("**Stderr:**")
+                st.code(data.get("stderr", ""), language="text")
+                if data.get("warnings"):
+                    st.markdown("**Warnings:**")
+                    for w in data["warnings"]:
+                        st.warning(w)
+                st.markdown("**Explanation:**")
+                st.info(data.get("explanation", "No explanation."))
+            else:
+                st.error(f"Execution failed: HTTP {resp.status_code} - {resp.text}")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+# History section (replace the existing history part)
+st.markdown("---")
+st.subheader("📜 Execution History")
+if st.button("Refresh History"):
+    st.rerun()
+
+try:
+    hist_resp = requests.get(f"{BACKEND_URL}/history", timeout=5)
+    if hist_resp.status_code == 200:
+        history = hist_resp.json()
+        if history:
+            for record in history[:10]:
+                with st.expander(
+                    f"ID {record['id']} - {record['created_at']} - {record['status']} - Risk: {record['risk_level']}"
+                ):
+                    st.write(f"**Code hash:** {record['code_hash'][:16]}...")
+                    st.write(f"**Blocked:** {record['blocked']}")
+                    st.write(f"**Exit code:** {record['exit_code']}")
+                    st.write(f"**Execution time:** {record['execution_time']:.3f}s")
+                    # Unique keys for each text_area
+                    st.text_area(
+                        "Stdout (first 500 chars)",
+                        record["stdout"][:500],
+                        height=100,
+                        key=f"stdout_{record['id']}",
+                    )
+                    if record["stderr"]:
+                        st.text_area(
+                            "Stderr (first 500 chars)",
+                            record["stderr"][:500],
+                            height=100,
+                            key=f"stderr_{record['id']}",
+                        )
+        else:
+            st.info("No execution history yet.")
+    else:
+        st.warning("Could not fetch history.")
+except Exception as e:
+    st.warning(f"History unavailable: {e}")
+
+st.markdown("---")
+st.caption(
+    "Security Disclaimer: This sandbox provides layered security but is not perfect. Do not run untrusted code from unknown sources without review."
+)
+
+
+=== FILE: requirements.txt ===
+
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+sqlalchemy
+python-dotenv
+docker
+pyyaml
+psutil
+requests
+streamlit
+pytest
+httpx
+
+
+=== FILE: sandbox_image/Dockerfile ===
+
+FROM python:3.11-slim
+
+RUN useradd -m -u 1000 -s /bin/bash sandbox
+
+WORKDIR /sandbox
+
+RUN chown sandbox:sandbox /sandbox && chmod 755 /sandbox
+
+USER sandbox
+
+CMD ["python", "-u", "/sandbox/script.py"]
+
+
+=== FILE: sandbox_image/Dockerimage ===
+
+# Sandbox image for SafeRun AI
+FROM python:3.11-slim
+
+# Create non-root user
+RUN useradd -m -u 1000 -s /bin/bash sandbox
+
+# Set working directory inside container
+WORKDIR /sandbox
+
+# Ensure script directory exists and is writable only if needed (policy controlled by mount)
+RUN chown sandbox:sandbox /sandbox && chmod 755 /sandbox
+
+# Switch to non-root user
+USER sandbox
+
+# Default command (overridden by executor)
+CMD ["python", "-u", "/sandbox/script.py"]
+
+
+=== FILE: sandbox_image/script.py ===
+
+print("SafeRun sandbox works")
+
+
+=== FILE: tests/test_config.py ===
+
+"""
+Tests for config module.
+"""
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from backend.config import Settings
+
+
+def test_settings_defaults():
+    """Test that settings have reasonable defaults."""
+    settings = Settings()
+    
+    # Test that essential attributes exist
+    assert hasattr(settings, 'APP_NAME')
+    assert hasattr(settings, 'DEBUG')
+    assert hasattr(settings, 'DATABASE_URL')
+    assert hasattr(settings, 'MAX_CODE_SIZE')
+    
+    # Test default values are sensible
+    assert settings.APP_NAME == "SafeRun AI"
+    assert isinstance(settings.DEBUG, bool)
+    assert settings.MAX_CODE_SIZE > 0
+
+
+def test_settings_from_env(monkeypatch):
+    """Test that settings can be overridden by environment variables."""
+    # Set environment variables
+    monkeypatch.setenv("APP_NAME", "TestApp")
+    monkeypatch.setenv("DEBUG", "true")
+    monkeypatch.setenv("MAX_CODE_SIZE", "5000")
+    
+    # Create new settings instance
+    settings = Settings()
+    
+    # Check that environment values were used
+    assert settings.APP_NAME == "TestApp"
+    assert settings.DEBUG is True
+    assert settings.MAX_CODE_SIZE == 5000
+
+
+=== FILE: tests/test_policy_engine.py ===
+
+"""
+Tests for policy_engine module.
+"""
+import sys
+import os
+import tempfile
+import yaml
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from backend.policy_engine import PolicyEngine
+from backend.scanner import ScanResult
+
+
+def test_policy_engine_init_with_defaults():
+    """Test PolicyEngine creates default policy when file doesn't exist."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        policy_path = os.path.join(tmpdir, "test_policy.yaml")
+        
+        # Policy file doesn't exist yet
+        assert not os.path.exists(policy_path)
+        
+        engine = PolicyEngine(policy_path)
+        
+        # Should have created default policy
+        assert os.path.exists(policy_path)
+        assert engine.policy["max_execution_time_seconds"] == 10
+        assert engine.policy["max_memory_mb"] == 256
+        assert "os" in engine.policy["blocked_imports"]
+        assert "eval" in engine.policy["blocked_calls"]
+
+
+def test_policy_engine_load_existing():
+    """Test PolicyEngine loads existing policy file."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        policy_path = os.path.join(tmpdir, "test_policy.yaml")
+        
+        # Create a custom policy
+        custom_policy = {
+            "max_execution_time_seconds": 30,
+            "max_memory_mb": 512,
+            "network_enabled": True,
+            "filesystem_write_enabled": True,
+            "allowed_imports": ["math", "os"],
+            "blocked_imports": ["subprocess"],
+            "blocked_calls": ["eval", "exec"]
+        }
+        
+        with open(policy_path, 'w') as f:
+            yaml.dump(custom_policy, f)
+        
+        engine = PolicyEngine(policy_path)
+        
+        # Should have loaded custom policy and merged with defaults
+        assert engine.policy["max_execution_time_seconds"] == 30  # custom
+        assert engine.policy["max_cpu_cores"] == 1  # default (not in custom)
+        assert engine.policy["network_enabled"] is True  # custom
+        assert "os" in engine.policy["allowed_imports"]  # custom
+        assert "math" in engine.policy["allowed_imports"]  # custom
+        assert "subprocess" in engine.policy["blocked_imports"]  # custom
+        assert "eval" in engine.policy["blocked_calls"]  # custom
+
+
+def test_policy_engine_check_code():
+    """Test policy engine violation detection."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        policy_path = os.path.join(tmpdir, "test_policy.yaml")
+        engine = PolicyEngine(policy_path)
+        
+        # Create a scan result with dangerous import
+        scan_result = ScanResult(
+            risk_level="BLOCKED",
+            blocked=True,
+            warnings=["Dangerous import: os"],
+            detected_patterns=["import_os"]
+        )
+        
+        violations = engine.check_code("import os", scan_result)
+        
+        # Should detect blocked import
+        assert len(violations) > 0
+        assert any("Blocked import: os" in v for v in violations)
+
+
+def test_policy_engine_check_code_no_violations():
+    """Test policy engine with compliant code."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        policy_path = os.path.join(tmpdir, "test_policy.yaml")
+        engine = PolicyEngine(policy_path)
+        
+        # Create a scan result with safe import
+        scan_result = ScanResult(
+            risk_level="LOW",
+            blocked=False,
+            warnings=[],
+            detected_patterns=["import_math"]
+        )
+        
+        violations = engine.check_code("import math", scan_result)
+        
+        # Should not detect violations for allowed import
+        assert len(violations) == 0
+
+
+def test_policy_engine_getters():
+    """Test policy engine getter methods."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        policy_path = os.path.join(tmpdir, "test_policy.yaml")
+        engine = PolicyEngine(policy_path)
+        
+        # Test getters return expected types and values
+        assert isinstance(engine.get_max_execution_time(), int)
+        assert isinstance(engine.get_max_memory_mb(), int)
+        assert isinstance(engine.get_max_cpu_cores(), float)
+        assert isinstance(engine.get_network_enabled(), bool)
+        assert isinstance(engine.get_filesystem_write_enabled(), bool)
+        
+        # Test default values
+        assert engine.get_max_execution_time() == 10
+        assert engine.get_max_memory_mb() == 256
+        assert engine.get_max_cpu_cores() == 1.0
+
+
+=== FILE: tests/test_scanner.py ===
+
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from backend.scanner import CodeScanner
+
+def test_imports():
+    """Test that only dangerous imports are flagged"""
+    scanner = CodeScanner()
+    
+    # Test safe import - should not trigger warning
+    safe_code = """
+import math
+import json
+"""
+    result = scanner.scan(safe_code)
+    print(f"Safe imports: risk_level={result.risk_level}, warnings={result.warnings}")
+    assert result.risk_level == "LOW", f"Expected LOW risk, got {result.risk_level}"
+    assert len(result.warnings) == 0, f"Expected no warnings, got {result.warnings}"
+    
+    # Test dangerous import - should trigger warning
+    dangerous_code = """
+import os
+"""
+    result = scanner.scan(dangerous_code)
+    print(f"Dangerous import: risk_level={result.risk_level}, warnings={result.warnings}")
+    assert result.risk_level == "BLOCKED", f"Expected BLOCKED risk, got {result.risk_level}"
+    assert any("Dangerous import: os" in w for w in result.warnings), f"Expected os import warning, got {result.warnings}"
+
+def test_import_from():
+    """Test ImportFrom statements"""
+    scanner = CodeScanner()
+    
+    # Test safe import from
+    safe_code = """
+from math import sqrt
+"""
+    result = scanner.scan(safe_code)
+    print(f"Safe import from: risk_level={result.risk_level}, warnings={result.warnings}")
+    assert result.risk_level == "LOW", f"Expected LOW risk, got {result.risk_level}"
+    
+    # Test dangerous import from
+    dangerous_code = """
+from os import path
+"""
+    result = scanner.scan(dangerous_code)
+    print(f"Dangerous import from: risk_level={result.risk_level}, warnings={result.warnings}")
+    assert result.risk_level == "BLOCKED", f"Expected BLOCKED risk, got {result.risk_level}"
+    assert any("Dangerous import from: os" in w for w in result.warnings), f"Expected os import from warning, got {result.warnings}"
+
+def test_string_literals():
+    """Test that suspicious path detection works for all string literals, not just in calls"""
+    scanner = CodeScanner()
+    
+    # Test suspicious string in variable assignment (should trigger)
+    suspicious_code = """
+bad_path = "/etc/passwd"
+"""
+    result = scanner.scan(suspicious_code)
+    print(f"Suspicious string: risk_level={result.risk_level}, warnings={result.warnings}")
+    # Should have at least LOW risk due to the suspicious path
+    assert result.risk_level in ["LOW", "MEDIUM", "HIGH", "BLOCKED"], f"Expected some risk, got {result.risk_level}"
+    assert any("Suspicious path reference" in w for w in result.warnings), f"Expected suspicious path warning, got {result.warnings}"
+    
+    # Test safe string (should not trigger)
+    safe_string_code = """
+safe_string = "hello world"
+"""
+    result = scanner.scan(safe_string_code)
+    print(f"Safe string: risk_level={result.risk_level}, warnings={result.warnings}")
+    assert result.risk_level == "LOW", f"Expected LOW risk, got {result.risk_level}"
+    assert len(result.warnings) == 0, f"Expected no warnings, got {result.warnings}"
+
+def test_infinite_loop():
+    """Test that infinite loop detection works outside of Call nodes"""
+    scanner = CodeScanner()
+    
+    # Test infinite loop (should trigger)
+    infinite_loop_code = """
+while True:
+    x = x + 1
+"""
+    result = scanner.scan(infinite_loop_code)
+    print(f"Infinite loop: risk_level={result.risk_level}, warnings={result.warnings}")
+    assert result.risk_level in ["LOW", "MEDIUM", "HIGH", "BLOCKED"], f"Expected some risk, got {result.risk_level}"
+    assert any("Potential infinite loop" in w for w in result.warnings), f"Expected infinite loop warning, got {result.warnings}"
+    
+    # Test loop with break (should not trigger infinite loop warning)
+    loop_with_break_code = """
+while True:
+    if condition:
+        break
+    x = x + 1
+"""
+    result = scanner.scan(loop_with_break_code)
+    print(f"Loop with break: risk_level={result.risk_level}, warnings={result.warnings}")
+    # May still have other warnings, but should not have infinite loop warning
+    infinite_loop_warnings = [w for w in result.warnings if "Potential infinite loop" in w]
+    assert len(infinite_loop_warnings) == 0, f"Expected no infinite loop warnings, got {infinite_loop_warnings}"
+
+if __name__ == "__main__":
+    test_imports()
+    test_import_from()
+    test_string_literals()
+    test_infinite_loop()
+    print("All tests passed!")
+
+
+=== FILE: tests/test_schemas.py ===
+
+"""
+Tests for schemas module.
+"""
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from backend.schemas import (
+    ScanRequest,
+    ScanResponse,
+    ExecuteRequest,
+    HistoryEntry
+)
+
+
+def test_scan_request():
+    """Test ScanRequest schema."""
+    request = ScanRequest(code="print('hello')")
+    assert request.code == "print('hello')"
+
+
+def test_scan_response():
+    """Test ScanResponse schema."""
+    response = ScanResponse(
+        risk_level="LOW",
+        blocked=False,
+        warnings=["test warning"],
+        detected_patterns=["test_pattern"],
+        policy_violations=[],
+        explanation="test explanation"
+    )
+    assert response.risk_level == "LOW"
+    assert response.blocked is False
+    assert len(response.warnings) == 1
+    assert response.explanation == "test explanation"
+
+
+def test_execute_request():
+    """Test ExecuteRequest schema."""
+    request = ExecuteRequest(code="print('hello')", override=True)
+    assert request.code == "print('hello')"
+    assert request.override is True
+
+    # Test default
+    request_default = ExecuteRequest(code="print('hello')")
+    assert request_default.override is False
+
+
+def test_history_entry():
+    """Test HistoryEntry schema."""
+    entry = HistoryEntry(
+        id=1,
+        code_hash="abc123",
+        risk_level="MEDIUM",
+        blocked=True,
+        warnings='["warning1", "warning2"]',
+        detected_patterns='["pattern1"]',
+        policy_violations='[]',
+        explanation="test explanation",
+        timestamp="2023-01-01T00:00:00"
+    )
+    assert entry.id == 1
+    assert entry.code_hash == "abc123"
+    assert entry.risk_level == "MEDIUM"
+    assert entry.blocked is True

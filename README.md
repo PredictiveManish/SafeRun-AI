@@ -95,7 +95,7 @@ We assume the attacker (or the AI model) can generate arbitrary Python code. The
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/saferun-ai.git
+git clone https://github.com/predictivemanish/saferun-ai.git
 cd saferun-ai
 
 # Create virtual environment

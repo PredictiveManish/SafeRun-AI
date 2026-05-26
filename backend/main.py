@@ -1,12 +1,15 @@
 """
 FastAPI application for SafeRun AI.
 Provides endpoints for code scanning, execution, and history.
+Serves static frontend at root.
 """
 
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from backend.config import settings
 from backend.database import init_db
@@ -17,7 +20,6 @@ from backend.schemas import (
     ExecuteResponse,
     HistoryEntry,
     HealthResponse,
-    InfoResponse,
 )
 from backend.scanner import CodeScanner
 from backend.policy_engine import PolicyEngine
@@ -54,24 +56,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS for Streamlit frontend
+# CORS for frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to frontend domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/", response_model=InfoResponse)
-async def root():
-    """Basic API information."""
-    return InfoResponse(
-        name="SafeRun AI API",
-        version="1.0.0",
-        description="Secure sandbox execution for AI-generated code",
-    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -87,22 +79,14 @@ async def scan_code(request: ScanRequest):
     Returns risk level, warnings, and detected patterns.
     """
     try:
-        # Run scanner
         scan_result = scanner.scan(request.code)
-
-        # Check policy violations
         policy_violations = policy_engine.check_code(request.code, scan_result)
-
-        # Determine overall risk and blocked status
         blocked = scan_result.blocked or bool(policy_violations)
-
-        # Generate explanation (local or AI)
         explanation = explanation_gen.generate_scan_explanation(
             code=request.code,
             scan_result=scan_result,
             policy_violations=policy_violations,
         )
-
         return ScanResponse(
             risk_level=scan_result.risk_level,
             blocked=blocked,
@@ -125,20 +109,16 @@ async def execute_code(request: ExecuteRequest):
     Execute code in sandbox after scanning and policy enforcement.
     If blocked and override=False, refuses execution.
     """
-    # Step 1: Scan
     scan_result = scanner.scan(request.code)
     policy_violations = policy_engine.check_code(request.code, scan_result)
-
     blocked = scan_result.blocked or bool(policy_violations)
 
-    # Step 2: If blocked and no override, reject
     if blocked and not request.override:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Execution blocked by security policy. Use override=true at your own risk.",
         )
 
-    # Step 3: Execute in sandbox
     try:
         exec_result = sandbox.execute(
             code=request.code,
@@ -155,7 +135,6 @@ async def execute_code(request: ExecuteRequest):
             detail=f"Sandbox error: {str(e)}",
         )
 
-    # Step 4: Store audit record
     audit_record = audit_store.create_record(
         code=request.code,
         scan_risk_level=scan_result.risk_level,
@@ -168,7 +147,6 @@ async def execute_code(request: ExecuteRequest):
         status=exec_result.status,
     )
 
-    # Step 5: Generate explanation (if needed)
     explanation = explanation_gen.generate_execution_explanation(
         code=request.code,
         scan_result=scan_result,
@@ -195,3 +173,9 @@ async def get_history(limit: int = 20):
     """Return last N execution records."""
     records = audit_store.get_recent(limit=limit)
     return records
+
+
+# Serve static frontend files (must be after all API routes)
+static_dir = Path(__file__).parent.parent / "frontend" / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")

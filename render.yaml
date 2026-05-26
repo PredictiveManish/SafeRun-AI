@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: saferun-ai
+    env: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon  
+    plan: free 
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        value: sqlite:///./data/saferun.db
+      - key: SANDBOX_IMAGE
+        value: ghcr.io/predictivemanish/saferun-ai-sandbox:latest
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1
+    autoDeploy: true
