@@ -5,7 +5,7 @@ Integrates with scanner results and code.
 
 import yaml
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from backend.scanner import ScanResult
 
 

@@ -4,8 +4,7 @@ Detects dangerous imports, calls, patterns, and infinite loops.
 """
 
 import ast
-import hashlib
-from typing import List, Set, Tuple
+from typing import List
 from dataclasses import dataclass, field
 
 # Dangerous patterns
@@ -56,8 +55,8 @@ SUSPICIOUS_PATHS = {
     ".env",
     "C:\\Windows",
     "C:\\System32",
-    "\System",
-    "\Library",
+    "\\System",
+    "\\Library",
 }
 
 # Additionl call patterns
@@ -151,54 +150,55 @@ class CodeScanner:
                                 risk_score += 3
                                 blocked = True
 
-                    # Suspicious string literals (paths)
-                    elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-                        path = node.value
-                        for susp in SUSPICIOUS_PATHS:
-                            if susp in path and len(path) > 3:
-                                warnings.append(
-                                    f"Suspicious path reference: {path[:50]}"
-                                )
-                                patterns.append("suspicious_path")
-                                risk_score += 1
+            # Suspicious string literals (paths) - check all string constants
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                path = node.value
+                for susp in SUSPICIOUS_PATHS:
+                    if susp in path and len(path) > 3:
+                        warnings.append(
+                            f"Suspicious path reference: {path[:50]}"
+                        )
+                        patterns.append("suspicious_path")
+                        risk_score += 1
 
-                        # Detec infinite loop candidates (while True with no break detection is heuristic)
-                    elif isinstance(node, ast.While):
-                        if (
-                            isinstance(node.test, ast.Constant)
-                            and node.test.value is True
-                        ):
-                            # Check for break/return inside body (simplistic)
-                            has_exit = any(
-                                isinstance(sub, (ast.Break, ast.Return))
-                                for sub in ast.walk(node)
-                            )
-                            if not has_exit:
-                                warnings.append(
-                                    "Potential infinite loop: 'while True' without break"
-                                )
-                                patterns.append("infinite_loop")
-                                risk_score += 2
-                # Determine risk level
-                if blocked:
-                    risk_level = "BLOCKED"
-                elif risk_score >= 5:
-                    risk_level = "HIGH"
-                elif risk_score >= 2:
-                    risk_level = "MEDIUM"
-                else:
-                    risk_level = "LOW"
+            # Detect infinite loop candidates (while True with no break detection is heuristic)
+            if isinstance(node, ast.While):
+                if (
+                    isinstance(node.test, ast.Constant)
+                    and node.test.value is True
+                ):
+                    # Check for break/return inside body (simplistic)
+                    has_exit = any(
+                        isinstance(sub, (ast.Break, ast.Return))
+                        for sub in ast.walk(node)
+                    )
+                    if not has_exit:
+                        warnings.append(
+                            "Potential infinite loop: 'while True' without break"
+                        )
+                        patterns.append("infinite_loop")
+                        risk_score += 2
 
-                # Remove duplicates
-                warnings = list(dict.fromkeys(warnings))
-                patterns = list(dict.fromkeys(patterns))
+        # Determine risk level (after processing all nodes)
+        if blocked:
+            risk_level = "BLOCKED"
+        elif risk_score >= 5:
+            risk_level = "HIGH"
+        elif risk_score >= 2:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
 
-                return ScanResult(
-                    risk_level=risk_level,
-                    blocked=blocked,
-                    warnings=warnings,
-                    detected_patterns=patterns,
-                )
+        # Remove duplicates
+        warnings = list(dict.fromkeys(warnings))
+        patterns = list(dict.fromkeys(patterns))
+
+        return ScanResult(
+            risk_level=risk_level,
+            blocked=blocked,
+            warnings=warnings,
+            detected_patterns=patterns,
+        )
 
     def _get_func_name(self, node) -> str:
         """Extract fully qualified function name from AST node."""

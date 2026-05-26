@@ -4,8 +4,6 @@ Utility functions for backend.
 
 import hashlib
 import re
-from typing import List
-
 
 def hash_code(code: str) -> str:
     """Return SHA256 hash of code string."""

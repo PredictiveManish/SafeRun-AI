@@ -3,18 +3,15 @@ Docker-based sandbox executor.
 Manages container lifecycle, resource limits, and output capture.
 """
 
-import os
 import time
 import tempfile
-import uuid
 import logging
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 
 import docker
-from docker.errors import DockerException, ImageNotFound, APIError, NotFound
-
+from docker.errors import DockerException, ImageNotFound, APIError
 logger = logging.getLogger(__name__)
 
 

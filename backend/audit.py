@@ -7,7 +7,7 @@ import hashlib
 import json
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from backend.database import init_db, get_db
+from backend.database import init_db
 from backend.models import ExecutionRecord
 
 

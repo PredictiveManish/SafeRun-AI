@@ -5,8 +5,6 @@ Provides code editor, scan/execute buttons, and history viewer.
 
 import streamlit as st
 import requests
-import json
-from datetime import datetime
 
 # Configuration
 BACKEND_URL = "http://localhost:8000"
