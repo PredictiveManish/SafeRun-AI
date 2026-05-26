@@ -5,12 +5,22 @@ Usage: saferun <file>      Check if a file is safe
        saferun history      Show execution history
 """
 
+import os
 import sys
 import click
 import requests
 from pathlib import Path
 
-API_BASE = "http://localhost:8000"
+# Smart default: env var > production URL > localhost
+def get_default_api_url():
+    """Get API URL from environment or use smart defaults"""
+    env_url = os.getenv("SAFERUN_API_URL")
+    if env_url:
+        return env_url
+    # Default to localhost for now 
+    return "http://localhost:8000"
+
+API_BASE = get_default_api_url()
 
 
 def get_code(file_path):
@@ -24,14 +34,18 @@ def get_code(file_path):
     return path.read_text(encoding="utf-8")
 
 
-def check_api():
+def check_api(api_url=None):
     """Verify backend is reachable."""
+    url = api_url or API_BASE
     try:
-        requests.get(f"{API_BASE}/health", timeout=2)
+        requests.get(f"{url}/health", timeout=2)
     except requests.ConnectionError:
         click.secho(
-            "Error: Backend not running. Start it with:\n"
-            "  uvicorn backend.main:app --host 0.0.0.0 --port 8000",
+            f"Error: Backend not reachable at {url}\n\n"
+            "Options:\n"
+            "  1. Start local backend: uvicorn backend.main:app --host 0.0.0.0 --port 8000\n"
+            "  2. Use remote backend: export SAFERUN_API_URL=https://your-backend.com\n"
+            "  3. Install full package: pip install saferun-ai[full]",
             fg="red",
         )
         sys.exit(1)
@@ -39,9 +53,11 @@ def check_api():
 
 @click.group(invoke_without_command=True)
 @click.argument("file", type=click.Path(), required=False, default=None)
-@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
+@click.option("--api-url", envvar="SAFERUN_API_URL", 
+              default=get_default_api_url(), 
+              help="Backend API URL")
 @click.pass_context
-def cli(ctx, file, api):
+def cli(ctx, file, api_url):
     """
     SafeRun AI - Security check for Python files.
 
@@ -52,19 +68,32 @@ def cli(ctx, file, api):
       saferun script.py          Check if script.py is safe
       saferun run script.py      Execute script.py in sandbox
       saferun history            Show recent execution history
+    
+    \b
+    Setup:
+      export SAFERUN_API_URL=https://your-backend.com
+      saferun script.py
     """
-    # Only try to check a file if no subcommand is being invoked
+    global API_BASE
+    API_BASE = api_url
+    
     if ctx.invoked_subcommand is None:
         if file:
-            ctx.invoke(check, file=file, api=api)
+            ctx.invoke(check, file=file)
         else:
             click.echo(ctx.get_help())
 
+
 @cli.command()
 @click.argument("file", type=click.Path())
-@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
-def check(file, api):
+@click.option("--api-url", envvar="SAFERUN_API_URL", hidden=True)
+@click.pass_context
+def check(ctx, file, api_url):
     """Scan a Python file for security risks. (Default command)"""
+    if api_url:
+        global API_BASE
+        API_BASE = api_url
+    
     code = get_code(file)
     filename = Path(file).name
     check_api()
@@ -72,7 +101,7 @@ def check(file, api):
     click.echo(f"Checking {filename}...")
 
     try:
-        resp = requests.post(f"{api}/scan", json={"code": code}, timeout=10)
+        resp = requests.post(f"{API_BASE}/scan", json={"code": code}, timeout=10)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
@@ -80,24 +109,19 @@ def check(file, api):
         sys.exit(1)
 
     risk = data["risk_level"]
-    blocked = data["blocked"]
     warnings = data.get("warnings", [])
     violations = data.get("policy_violations", [])
-    patterns = data.get("detected_patterns", [])
 
-    # Print results in ruff-like style
     if risk == "LOW":
         click.echo(f"\n{click.style('PASSED', fg='green', bold=True)} {filename} appears safe.")
         click.echo(data.get("explanation", ""))
         sys.exit(0)
-
     elif risk == "MEDIUM":
         click.echo(f"\n{click.style('WARNING', fg='yellow', bold=True)} {filename} has potential risks.")
         for w in warnings:
             click.secho(f"  • {w}", fg="yellow")
         click.echo(f"\n{data.get('explanation', '')}")
         sys.exit(0)
-
     elif risk == "HIGH":
         click.echo(f"\n{click.style('FAILED', fg='red', bold=True)} {filename} contains high-risk patterns.")
         for w in warnings:
@@ -108,7 +132,6 @@ def check(file, api):
                 click.secho(f"  • {v}", fg="red")
         click.echo(f"\n{data.get('explanation', '')}")
         sys.exit(1)
-
     elif risk == "BLOCKED":
         click.echo(f"\n{click.style('BLOCKED', fg='red', bold=True)} {filename} would be blocked from execution.")
         for w in warnings:
@@ -123,10 +146,15 @@ def check(file, api):
 
 @cli.command()
 @click.argument("file", type=click.Path())
-@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
+@click.option("--api-url", envvar="SAFERUN_API_URL", hidden=True)
 @click.option("--override", is_flag=True, help="Override safety blocks")
-def run(file, api, override):
+@click.pass_context
+def run(ctx, file, api_url, override):
     """Execute a Python file in the sandbox."""
+    if api_url:
+        global API_BASE
+        API_BASE = api_url
+    
     code = get_code(file)
     filename = Path(file).name
     check_api()
@@ -138,7 +166,7 @@ def run(file, api, override):
 
     try:
         resp = requests.post(
-            f"{api}/execute",
+            f"{API_BASE}/execute",
             json={"code": code, "override": override},
             timeout=30,
         )
@@ -178,13 +206,18 @@ def run(file, api, override):
 
 
 @cli.command()
-@click.option("--api", default=API_BASE, help="Backend API URL", hidden=True)
-def history(api):
+@click.option("--api-url", envvar="SAFERUN_API_URL", hidden=True)
+@click.pass_context
+def history(ctx, api_url):
     """Show recent execution history."""
+    if api_url:
+        global API_BASE
+        API_BASE = api_url
+    
     check_api()
 
     try:
-        resp = requests.get(f"{api}/history", timeout=5)
+        resp = requests.get(f"{API_BASE}/history", timeout=5)
         resp.raise_for_status()
         records = resp.json()
     except Exception as e:

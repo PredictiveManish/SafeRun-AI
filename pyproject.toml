@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "saferun-ai"
-version = "1.0.0"
+version = "0.1.1"
 description = "Secure sandbox execution for AI-generated Python code"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,7 +21,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
+# ONLY CLI dependencies - tiny package!
 dependencies = [
+    "click>=8.0",
+    "requests>=2.31.0",
+]
+
+# Backend deps only for self-hosting
+[project.optional-dependencies]
+full = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.25.0",
     "pydantic>=2.5.0",
@@ -30,17 +38,10 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "docker>=7.0.0",
     "pyyaml>=6.0",
-    "requests>=2.31.0",
-    "streamlit>=1.30.0",
-    "click>=8.0",
 ]
-
-[project.optional-dependencies]
 dev = [
     "pytest>=7.4.0",
     "httpx>=0.25.0",
-    "black>=23.0.0",
-    "flake8>=6.0.0",
 ]
 
 [project.scripts]
@@ -52,15 +53,7 @@ Documentation = "https://github.com/predictivemanish/saferun-ai#readme"
 Issues = "https://github.com/predictivemanish/saferun-ai/issues"
 
 [tool.setuptools.packages.find]
-include = ["backend*", "frontend*", "cli*"]
+include = ["cli*"]  # Only package the CLI, not backend
 
 [tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml", "*.txt", "*.md"]
-
-[tool.black]
-line-length = 100
-target-version = ['py311']
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
+"cli" = ["*.txt", "*.md"]
