@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SafeRun AI – Secure Sandbox</title>
+  <title>SafeRun AI - Secure Sandbox</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -39,8 +39,8 @@
       margin-bottom: 0.3rem;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; }
-    .dot.red { background: #ef4444; }
     .dot.green { background: #22c55e; }
+    .dot.red { background: #ef4444; }
     .main {
       flex: 1;
       padding: 2rem;
@@ -51,9 +51,11 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
     }
     .header h1 { font-size: 2rem; font-weight: 600; }
-    .button-group { display: flex; gap: 0.5rem; }
+    .button-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     button {
       padding: 0.6rem 1.2rem;
       border: none;
@@ -62,17 +64,20 @@
       cursor: pointer;
       transition: all 0.2s;
       font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     .btn-primary { background: #3b82f6; color: white; }
-    .btn-primary:hover { background: #2563eb; }
+    .btn-primary:hover:not(:disabled) { background: #2563eb; }
     .btn-secondary { background: #334155; color: #e2e8f0; }
-    .btn-secondary:hover { background: #475569; }
+    .btn-secondary:hover:not(:disabled) { background: #475569; }
     .btn-danger { background: #ef4444; color: white; }
     
-    textarea::placeholder {
-    color: #64748b;
-    line-height: 1.6;
-    }
     textarea {
       width: 100%;
       background: #1e293b;
@@ -80,19 +85,34 @@
       border-radius: 12px;
       color: #e2e8f0;
       padding: 1.5rem;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
       font-size: 0.95rem;
       line-height: 1.6;
       resize: vertical;
       margin-bottom: 1.5rem;
     }
+    textarea::placeholder {
+      color: #64748b;
+      line-height: 1.6;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    
     .result-card {
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 12px;
       padding: 1.5rem;
       margin-bottom: 1.5rem;
+      animation: slideIn 0.3s ease;
     }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
     .badge {
       display: inline-block;
       padding: 0.2rem 0.8rem;
@@ -100,17 +120,24 @@
       font-size: 0.85rem;
       font-weight: 600;
     }
-    .badge-low { background: #22c55e20; color: #22c55e; }
-    .badge-medium { background: #f59e0b20; color: #f59e0b; }
-    .badge-high { background: #ef444420; color: #ef4444; }
-    .badge-blocked { background: #a855f720; color: #a855f7; }
+    .badge-low { background: #22c55e20; color: #22c55e; border: 1px solid #22c55e40; }
+    .badge-medium { background: #f59e0b20; color: #f59e0b; border: 1px solid #f59e0b40; }
+    .badge-high { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
+    .badge-blocked { background: #a855f720; color: #a855f7; border: 1px solid #a855f740; }
+    
     pre {
       background: #0f172a;
       padding: 1rem;
       border-radius: 8px;
       overflow-x: auto;
       margin: 0.5rem 0;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
+    
     .history-item {
       background: #1e293b;
       border: 1px solid #334155;
@@ -118,37 +145,125 @@
       padding: 1rem;
       margin-bottom: 0.5rem;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
-    .history-item:hover { background: #2d3a4f; }
+    .history-item:hover { 
+      background: #2d3a4f;
+      transform: translateX(4px);
+    }
+    
     .flex-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    
     .spinner {
       display: inline-block;
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       border: 2px solid #ffffff50;
       border-top-color: white;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
-      margin-right: 0.5rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #94a3b8;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.5rem;
+    }
+    .status-connected { background: #22c55e; }
+    .status-disconnected { background: #ef4444; }
+    
+    .override-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .override-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    details {
+      margin: 0.5rem 0;
+    }
+    details summary {
+      cursor: pointer;
+      color: #94a3b8;
+      font-weight: 500;
+      padding: 0.3rem 0;
+    }
+    details summary:hover {
+      color: #e2e8f0;
+    }
+    
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    ul li {
+      padding: 0.3rem 0;
+      color: #94a3b8;
+    }
+    ul li::before {
+      content: "*";
+      color: #3b82f6;
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+    
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; padding: 1rem; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .header h1 { font-size: 1.5rem; }
+    }
   </style>
 </head>
 <body>
   <aside class="sidebar">
-    <div class="logo">🛡️ <span>SafeRun</span> AI</div>
+    <div class="logo">[SHIELD] <span>SafeRun</span> AI</div>
+    
+    <div class="sidebar-section">
+      <h3>Backend Status</h3>
+      <div id="backendStatus">
+        <span class="status-dot status-disconnected"></span>
+        <span>Checking...</span>
+      </div>
+    </div>
+    
     <div class="sidebar-section">
       <h3>Active Policy</h3>
       <div class="policy-item"><span class="dot green"></span> Network: Off</div>
       <div class="policy-item"><span class="dot green"></span> Write FS: Off</div>
-      <div class="policy-item"><span class="dot green"></span> Non‑root user</div>
+      <div class="policy-item"><span class="dot green"></span> Non-root user</div>
       <div class="policy-item"><span class="dot green"></span> CPU/Mem limits</div>
     </div>
+    
     <div class="sidebar-section">
       <h3>Safety Layers</h3>
       <div style="font-size:0.85rem; color:#94a3b8;">
         AST Scanner &bull; Docker Sandbox &bull; Policy Engine
+      </div>
+    </div>
+    
+    <div class="sidebar-section">
+      <h3>Links</h3>
+      <div style="font-size:0.85rem;">
+        <a href="https://github.com/predictivemanish/saferun-ai" 
+           style="color:#3b82f6; text-decoration:none;" 
+           target="_blank">GitHub Repository</a>
       </div>
     </div>
   </aside>
@@ -157,52 +272,92 @@
     <div class="header">
       <h1>Run AI‑generated code safely</h1>
       <div class="button-group">
-        <button class="btn-secondary" onclick="document.getElementById('codeArea').value=''">Clear</button>
-        <button class="btn-primary" onclick="scanCode()">🔍 Scan Only</button>
-        <button class="btn-primary" onclick="executeCode()">▶ Execute in Sandbox</button>
+        <button class="btn-secondary" onclick="clearAll()">[CLEAR] Clear</button>
+         <button class="btn-primary" onclick="scanCode()" id="scanBtn">
+           [SEARCH] Scan Only
+         </button>
+         <button class="btn-primary" onclick="executeCode()" id="executeBtn">
+           [PLAY] Execute in Sandbox
+         </button>
       </div>
     </div>
 
-    <textarea id="codeArea" rows="12" placeholder="Paste your Python code here...">
-# Example safe code
+    <textarea id="codeArea" rows="12" placeholder="Paste your Python code here..."># Example safe code
 def fibonacci(n):
     a, b = 0, 1
     for _ in range(n):
         a, b = b, a + b
     return a
 
-print(f"fib(10) = {fibonacci(10)}")
-    </textarea>
+print(f"fib(10) = {fibonacci(10)}")</textarea>
 
     <div style="margin-bottom:1rem;">
-      <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+      <label class="override-label">
         <input type="checkbox" id="overrideCheck">
-        <span>Override safety blocks (use with caution)</span>
+        <span>[WARNING] Override safety blocks (use with caution)</span>
       </label>
     </div>
 
     <div id="resultArea"></div>
 
-    <h2 style="margin-top:2rem; margin-bottom:1rem;">📜 History</h2>
+    <h2 style="margin-top:2rem; margin-bottom:1rem;">[HISTORY] Execution History</h2>
+    <button class="btn-secondary" onclick="loadHistory()" style="margin-bottom:1rem;">
+      🔄 Refresh History
+    </button>
     <div id="historyArea">Loading history...</div>
   </main>
 
   <script>
-    const API_BASE = window.location.origin;  // same origin
+    // Auto-detect API base URL
+    const API_BASE = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:8000'
+      : window.location.origin;
+
+    // Check backend on load
+    checkBackend();
+
+    async function checkBackend() {
+      const statusDiv = document.getElementById('backendStatus');
+      try {
+        const resp = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2000) });
+        if (resp.ok) {
+          statusDiv.innerHTML = '<span class="status-dot status-connected"></span><span>Connected</span>';
+        } else {
+          throw new Error('Unhealthy');
+        }
+      } catch(e) {
+        statusDiv.innerHTML = '<span class="status-dot status-disconnected"></span><span>Disconnected</span>';
+      }
+    }
 
     function showSpinner() {
-      return '<div class="spinner"></div> Processing...';
+      return '<div class="loading"><div class="spinner"></div> Processing...</div>';
     }
 
     function getRiskBadge(level) {
-      const map = {LOW:'badge-low', MEDIUM:'badge-medium', HIGH:'badge-high', BLOCKED:'badge-blocked'};
+      const map = {
+        LOW: 'badge-low', 
+        MEDIUM: 'badge-medium', 
+        HIGH: 'badge-high', 
+        BLOCKED: 'badge-blocked'
+      };
       return `<span class="badge ${map[level] || ''}">${level}</span>`;
     }
 
     async function scanCode() {
-      const code = document.getElementById('codeArea').value;
+      const code = document.getElementById('codeArea').value.trim();
+      if (!code) {
+        alert('Please enter some code to scan.');
+        return;
+      }
+
       const resultArea = document.getElementById('resultArea');
+      const scanBtn = document.getElementById('scanBtn');
+      
       resultArea.innerHTML = showSpinner();
+      scanBtn.disabled = true;
+      
       try {
         const resp = await fetch(`${API_BASE}/scan`, {
           method: 'POST',
@@ -213,32 +368,60 @@ print(f"fib(10) = {fibonacci(10)}")
         if (!resp.ok) throw new Error(data.detail || 'Scan failed');
         renderScanResult(data);
       } catch(e) {
-        resultArea.innerHTML = `<div class="result-card" style="color:#ef4444;">Error: ${e.message}</div>`;
+        resultArea.innerHTML = `<div class="result-card" style="color:#ef4444;">❌ Error: ${escapeHtml(e.message)}</div>`;
+      } finally {
+        scanBtn.disabled = false;
       }
     }
 
     function renderScanResult(data) {
-      const blocked = data.blocked ? '🚫 Blocked' : '✅ Allowed';
+       const blocked = data.blocked ? '[BLOCKED] Blocked' : '[SUCCESS] Allowed';
       const html = `
         <div class="result-card">
-          <div class="flex-row" style="justify-content:space-between;">
+          <div class="flex-row" style="justify-content:space-between; margin-bottom:1rem;">
             <h3>Static Scan Result</h3>
             <div>${getRiskBadge(data.risk_level)}</div>
           </div>
-          <p style="margin:1rem 0;"><strong>Policy status:</strong> ${blocked}</p>
-          <p><strong>Explanation:</strong> ${data.explanation}</p>
-          ${data.warnings.length ? `<details><summary>Warnings (${data.warnings.length})</summary><ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul></details>` : ''}
-          ${data.policy_violations.length ? `<details><summary>Policy Violations (${data.policy_violations.length})</summary><ul>${data.policy_violations.map(v => `<li>${v}</li>`).join('')}</ul></details>` : ''}
-          <details><summary>Detected Patterns</summary><pre>${data.detected_patterns.join(', ')}</pre></details>
+          <p style="margin-bottom:0.5rem;"><strong>Policy status:</strong> ${blocked}</p>
+          <p style="margin-bottom:1rem;"><strong>Explanation:</strong> ${escapeHtml(data.explanation)}</p>
+          ${data.warnings.length ? `
+            <details>
+              <summary>⚠️ Warnings (${data.warnings.length})</summary>
+              <ul>${data.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul>
+            </details>
+          ` : ''}
+          ${data.policy_violations.length ? `
+            <details>
+              <summary>🚫 Policy Violations (${data.policy_violations.length})</summary>
+              <ul>${data.policy_violations.map(v => `<li>${escapeHtml(v)}</li>`).join('')}</ul>
+            </details>
+          ` : ''}
+          <details>
+            <summary>🔍 Detected Patterns</summary>
+            <pre>${escapeHtml(data.detected_patterns.join(', ') || 'None')}</pre>
+          </details>
         </div>`;
       document.getElementById('resultArea').innerHTML = html;
     }
 
     async function executeCode() {
-      const code = document.getElementById('codeArea').value;
+      const code = document.getElementById('codeArea').value.trim();
+      if (!code) {
+        alert('Please enter some code to execute.');
+        return;
+      }
+
       const override = document.getElementById('overrideCheck').checked;
       const resultArea = document.getElementById('resultArea');
+      const executeBtn = document.getElementById('executeBtn');
+      
+      if (override && !confirm('⚠️ You are overriding safety blocks. This may be dangerous. Continue?')) {
+        return;
+      }
+      
       resultArea.innerHTML = showSpinner();
+      executeBtn.disabled = true;
+      
       try {
         const resp = await fetch(`${API_BASE}/execute`, {
           method: 'POST',
@@ -248,61 +431,112 @@ print(f"fib(10) = {fibonacci(10)}")
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.detail || 'Execution failed');
         renderExecResult(data);
+        loadHistory(); // Refresh history after execution
       } catch(e) {
-        resultArea.innerHTML = `<div class="result-card" style="color:#ef4444;">Error: ${e.message}</div>`;
+        resultArea.innerHTML = `<div class="result-card" style="color:#ef4444;">❌ Error: ${escapeHtml(e.message)}</div>`;
+      } finally {
+        executeBtn.disabled = false;
       }
     }
 
-    function renderExecResult(data) {
-      const statusColor = data.status === 'success' ? '#22c55e' : '#ef4444';
-      const html = `
-        <div class="result-card">
-          <div class="flex-row" style="justify-content:space-between;">
-            <h3>Execution Result</h3>
-            <div>${getRiskBadge(data.risk_level)}</div>
+     function renderExecResult(data) {
+       const statusColor = data.status === 'success' ? '#22c55e' : '#ef4444';
+       const statusEmoji = data.status === 'success' ? '[SUCCESS]' : '[ERROR]';
+       const html = `
+         <div class="result-card">
+           <div class="flex-row" style="justify-content:space-between; margin-bottom:1rem;">
+             <h3>Execution Result</h3>
+             <div>${getRiskBadge(data.risk_level)}</div>
+           </div>
+           <p style="color:${statusColor}; font-weight:600; margin-bottom:0.5rem;">
+             ${statusEmoji} Status: ${data.status.toUpperCase()} (exit code: ${data.exit_code})
+           </p>
+          <p style="margin-bottom:0.5rem;">⏱️ Execution time: ${data.execution_time.toFixed(3)}s</p>
+          <p style="margin-bottom:1rem;"><strong>💡 Explanation:</strong> ${escapeHtml(data.explanation)}</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+            <div>
+              <h4 style="margin-bottom:0.5rem;">📤 stdout</h4>
+              <pre>${escapeHtml(data.stdout) || '(empty)'}</pre>
+            </div>
+            <div>
+              <h4 style="margin-bottom:0.5rem;">⚠️ stderr</h4>
+              <pre style="color:#fbbf24;">${escapeHtml(data.stderr) || '(empty)'}</pre>
+            </div>
           </div>
-          <p style="color:${statusColor}; font-weight:600;">Status: ${data.status.toUpperCase()} (exit ${data.exit_code})</p>
-          <p>Execution time: ${data.execution_time.toFixed(3)}s</p>
-          <p><strong>Explanation:</strong> ${data.explanation}</p>
-          <div style="display:flex; gap:1rem;">
-            <div style="flex:1;"><h4>stdout</h4><pre>${escapeHtml(data.stdout) || '(empty)'}</pre></div>
-            <div style="flex:1;"><h4>stderr</h4><pre>${escapeHtml(data.stderr) || '(empty)'}</pre></div>
-          </div>
-          ${data.warnings.length ? `<details><summary>Warnings</summary><ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul></details>` : ''}
+          ${data.warnings.length ? `
+            <details>
+              <summary>Warnings (${data.warnings.length})</summary>
+              <ul>${data.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul>
+            </details>
+          ` : ''}
         </div>`;
       document.getElementById('resultArea').innerHTML = html;
     }
 
     function escapeHtml(text) {
-      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     async function loadHistory() {
       const area = document.getElementById('historyArea');
+      area.innerHTML = '<div class="loading"><div class="spinner"></div> Loading history...</div>';
+      
       try {
         const resp = await fetch(`${API_BASE}/history`);
         const data = await resp.json();
         if (data.length === 0) {
-          area.innerHTML = '<p style="color:#94a3b8;">No executions yet.</p>';
+          area.innerHTML = '<p style="color:#94a3b8;">No executions yet. Try running some code!</p>';
           return;
         }
         area.innerHTML = data.slice(0, 20).map(rec => `
-          <div class="history-item" onclick="alert('Stdout: ${escapeHtml(rec.stdout).substring(0,200)}')">
+          <div class="history-item" onclick="showHistoryDetail(${rec.id}, '${escapeHtml(rec.stdout).substring(0, 100)}')">
             <div class="flex-row">
-              <span>#${rec.id}</span>
+              <span style="color:#94a3b8;">#${rec.id}</span>
               <span>${getRiskBadge(rec.risk_level)}</span>
-              <span style="color:#94a3b8;">${rec.status}</span>
-              <span style="margin-left:auto; color:#64748b;">${new Date(rec.created_at).toLocaleString()}</span>
+              <span style="color:${rec.status === 'success' ? '#22c55e' : '#ef4444'};">
+                ${rec.status}
+              </span>
+              <span style="margin-left:auto; color:#64748b; font-size:0.85rem;">
+                ${new Date(rec.created_at).toLocaleString()}
+              </span>
             </div>
           </div>
         `).join('');
       } catch(e) {
-        area.innerHTML = `<p style="color:#ef4444;">Could not load history.</p>`;
+        area.innerHTML = `<p style="color:#ef4444;">❌ Could not load history: ${escapeHtml(e.message)}</p>`;
       }
     }
 
-    // Initial history load
+    function showHistoryDetail(id, stdout) {
+      alert(`Execution #${id}\n\nStdout (first 100 chars):\n${stdout || '(empty)'}`);
+    }
+
+    function clearAll() {
+      document.getElementById('codeArea').value = '';
+      document.getElementById('resultArea').innerHTML = '';
+      document.getElementById('overrideCheck').checked = false;
+      document.getElementById('codeArea').focus();
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        executeCode();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        scanCode();
+      }
+    });
+
+    // Initial load
     loadHistory();
+    
+    // Periodic backend check
+    setInterval(checkBackend, 30000);
   </script>
 </body>
 </html>

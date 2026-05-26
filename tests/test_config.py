@@ -12,29 +12,23 @@ def test_settings_defaults():
     """Test that settings have reasonable defaults."""
     settings = Settings()
     
-    # Test that essential attributes exist
-    assert hasattr(settings, 'APP_NAME')
-    assert hasattr(settings, 'DEBUG')
-    assert hasattr(settings, 'DATABASE_URL')
-    assert hasattr(settings, 'MAX_CODE_SIZE')
+    # Test attributes that actually exist
+    assert hasattr(settings, 'backend_host')
+    assert hasattr(settings, 'backend_port')
+    assert hasattr(settings, 'database_url')
+    assert hasattr(settings, 'sandbox_image')
     
-    # Test default values are sensible
-    assert settings.APP_NAME == "SafeRun AI"
-    assert isinstance(settings.DEBUG, bool)
-    assert settings.MAX_CODE_SIZE > 0
+    assert settings.backend_host == "0.0.0.0"
+    assert settings.backend_port == 8000
+    assert settings.database_url == "sqlite:///./saferun.db"
 
 
 def test_settings_from_env(monkeypatch):
     """Test that settings can be overridden by environment variables."""
-    # Set environment variables
-    monkeypatch.setenv("APP_NAME", "TestApp")
-    monkeypatch.setenv("DEBUG", "true")
-    monkeypatch.setenv("MAX_CODE_SIZE", "5000")
+    monkeypatch.setenv("BACKEND_PORT", "9000")
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///test.db")
     
-    # Create new settings instance
     settings = Settings()
     
-    # Check that environment values were used
-    assert settings.APP_NAME == "TestApp"
-    assert settings.DEBUG is True
-    assert settings.MAX_CODE_SIZE == 5000
+    assert settings.backend_port == 9000
+    assert settings.database_url == "sqlite:///test.db"

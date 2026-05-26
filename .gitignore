@@ -8,6 +8,7 @@ __pycache__/
 dist/
 build/
 .env 
+codebase.*
 
 # Database
 *.db

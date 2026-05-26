@@ -279,25 +279,25 @@ Respond in language: {self.language}"""
                 else ""
             )
             return (
-                f"❌ Code was blocked due to high-risk patterns: {pattern_str}."
+                f"[ERROR] Code was blocked due to high-risk patterns: {pattern_str}."
                 f"{violation_str} Execution is not permitted."
             )
 
         if scan_result.risk_level == "HIGH":
             warning_str = ", ".join(warnings[:2]) or "unspecified risks"
             return (
-                f"⚠️ High-risk code detected: {warning_str}. "
+                f"[WARNING] High-risk code detected: {warning_str}. "
                 f"Review carefully before executing in any environment."
             )
 
         if scan_result.risk_level == "MEDIUM":
             warning_str = ", ".join(warnings[:2]) or "potential issues"
             return (
-                f"ℹ️ Medium-risk patterns found: {warning_str}. "
+                f"[INFO] Medium-risk patterns found: {warning_str}. "
                 f"Consider reviewing this code before execution."
             )
 
-        return "✅ Code appears safe based on static analysis."
+        return "[SUCCESS] Code appears safe based on static analysis."
 
     def _local_execution_explanation(
         self,
@@ -310,7 +310,7 @@ Respond in language: {self.language}"""
 
         if exec_result.status == "success":
             base = (
-                f"✅ Code executed successfully in sandbox "
+                f"[SUCCESS] Code executed successfully in sandbox "
                 f"(exit code {exec_result.exit_code}) "
                 f"in {exec_result.execution_time:.2f}s."
             )
@@ -323,15 +323,15 @@ Respond in language: {self.language}"""
 
         if exec_result.status == "timeout":
             return (
-                "⏱️ Execution timed out. The code may contain an infinite loop "
-                "or unexpectedly heavy computation. Review any loops and I/O calls."
+                f"[TIMEOUT] Execution timed out. The code may contain an infinite loop "
+                f"or unexpectedly heavy computation. Review any loops and I/O calls."
             )
 
         if exec_result.status == "error":
             stderr = (exec_result.stderr or "").strip()[:200] or "No stderr captured."
             return (
-                f"❌ Runtime error during sandbox execution: {stderr} "
+                f"[ERROR] Runtime error during sandbox execution: {stderr} "
                 f"Check the code for logical or dependency issues."
             )
 
-        return "❓ Unexpected execution outcome. Review the sandbox logs for details."
+        return "[UNEXPECTED] Unexpected execution outcome. Review the sandbox logs for details."

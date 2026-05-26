@@ -54,12 +54,24 @@ def test_history_entry():
         risk_level="MEDIUM",
         blocked=True,
         warnings='["warning1", "warning2"]',
-        detected_patterns='["pattern1"]',
-        policy_violations='[]',
-        explanation="test explanation",
-        timestamp="2023-01-01T00:00:00"
+        stdout="test stdout",
+        stderr="test stderr",
+        exit_code=0,
+        execution_time=1.5,
+        status="success",
+        created_at="2023-01-01T00:00:00"
     )
     assert entry.id == 1
+    assert entry.code_hash == "abc123"
+    assert entry.risk_level == "MEDIUM"
+    assert entry.blocked is True
+    assert entry.warnings == '["warning1", "warning2"]'
+    assert entry.stdout == "test stdout"
+    assert entry.stderr == "test stderr"
+    assert entry.exit_code == 0
+    assert entry.execution_time == 1.5
+    assert entry.status == "success"
+    assert entry.created_at == "2023-01-01T00:00:00"
     assert entry.code_hash == "abc123"
     assert entry.risk_level == "MEDIUM"
     assert entry.blocked is True

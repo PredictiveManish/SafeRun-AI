@@ -133,7 +133,7 @@ class CodeScanner:
                     blocked = True
 
             # Dangerous function calls
-            elif isinstance(node, ast.Call):
+            if isinstance(node, ast.Call):
                 func_name = self._get_func_name(node.func)
                 if func_name in DANGEROUS_CALLS:
                     # Special case: open with write mode
@@ -144,11 +144,16 @@ class CodeScanner:
                             risk_score += 2
                             if not blocked:  # Write may be allowed by policy, but scanner flags as HIGH
                                 blocked = False  # not auto-block; policy decides
-                            else:
-                                warnings.append(f"Dangerous call: {func_name}")
-                                patterns.append(f"call_{func_name.replace('.', '_')}")
-                                risk_score += 3
-                                blocked = True
+                        else:
+                            warnings.append(f"Dangerous call: {func_name}")
+                            patterns.append(f"call_{func_name.replace('.', '_')}")
+                            risk_score += 3
+                            blocked = True
+                    else:
+                        warnings.append(f"Dangerous call: {func_name}")
+                        patterns.append(f"call_{func_name.replace('.', '_')}")
+                        risk_score += 3
+                        blocked = True
 
             # Suspicious string literals (paths) - check all string constants
             if isinstance(node, ast.Constant) and isinstance(node.value, str):

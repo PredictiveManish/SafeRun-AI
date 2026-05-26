@@ -32,6 +32,7 @@ dependencies = [
     "pyyaml>=6.0",
     "requests>=2.31.0",
     "streamlit>=1.30.0",
+    "click>=8.0",
 ]
 
 [project.optional-dependencies]
