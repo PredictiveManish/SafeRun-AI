@@ -11,14 +11,16 @@ import click
 import requests
 from pathlib import Path
 
+
 # Smart default: env var > production URL > localhost
 def get_default_api_url():
     """Get API URL from environment or use smart defaults"""
     env_url = os.getenv("SAFERUN_API_URL")
     if env_url:
         return env_url
-    # Default to localhost for now 
+    # Default to localhost for now
     return "https://saferun-ai.onrender.com"
+
 
 API_BASE = get_default_api_url()
 
@@ -53,9 +55,12 @@ def check_api(api_url=None):
 
 @click.group(invoke_without_command=True)
 @click.argument("file", type=click.Path(), required=False, default=None)
-@click.option("--api-url", envvar="SAFERUN_API_URL", 
-              default=get_default_api_url(), 
-              help="Backend API URL")
+@click.option(
+    "--api-url",
+    envvar="SAFERUN_API_URL",
+    default=get_default_api_url(),
+    help="Backend API URL",
+)
 @click.pass_context
 def cli(ctx, file, api_url):
     """
@@ -68,7 +73,7 @@ def cli(ctx, file, api_url):
       saferun script.py          Check if script.py is safe
       saferun run script.py      Execute script.py in sandbox
       saferun history            Show recent execution history
-    
+
     \b
     Setup:
       export SAFERUN_API_URL=https://your-backend.com
@@ -76,7 +81,7 @@ def cli(ctx, file, api_url):
     """
     global API_BASE
     API_BASE = api_url
-    
+
     if ctx.invoked_subcommand is None:
         if file:
             ctx.invoke(check, file=file)
@@ -93,7 +98,7 @@ def check(ctx, file, api_url):
     if api_url:
         global API_BASE
         API_BASE = api_url
-    
+
     code = get_code(file)
     filename = Path(file).name
     check_api()
@@ -113,17 +118,23 @@ def check(ctx, file, api_url):
     violations = data.get("policy_violations", [])
 
     if risk == "LOW":
-        click.echo(f"\n{click.style('PASSED', fg='green', bold=True)} {filename} appears safe.")
+        click.echo(
+            f"\n{click.style('PASSED', fg='green', bold=True)} {filename} appears safe."
+        )
         click.echo(data.get("explanation", ""))
         sys.exit(0)
     elif risk == "MEDIUM":
-        click.echo(f"\n{click.style('WARNING', fg='yellow', bold=True)} {filename} has potential risks.")
+        click.echo(
+            f"\n{click.style('WARNING', fg='yellow', bold=True)} {filename} has potential risks."
+        )
         for w in warnings:
             click.secho(f"  • {w}", fg="yellow")
         click.echo(f"\n{data.get('explanation', '')}")
         sys.exit(0)
     elif risk == "HIGH":
-        click.echo(f"\n{click.style('FAILED', fg='red', bold=True)} {filename} contains high-risk patterns.")
+        click.echo(
+            f"\n{click.style('FAILED', fg='red', bold=True)} {filename} contains high-risk patterns."
+        )
         for w in warnings:
             click.secho(f"  • {w}", fg="red")
         if violations:
@@ -133,7 +144,9 @@ def check(ctx, file, api_url):
         click.echo(f"\n{data.get('explanation', '')}")
         sys.exit(1)
     elif risk == "BLOCKED":
-        click.echo(f"\n{click.style('BLOCKED', fg='red', bold=True)} {filename} would be blocked from execution.")
+        click.echo(
+            f"\n{click.style('BLOCKED', fg='red', bold=True)} {filename} would be blocked from execution."
+        )
         for w in warnings:
             click.secho(f"  • {w}", fg="red")
         if violations:
@@ -154,7 +167,7 @@ def run(ctx, file, api_url, override):
     if api_url:
         global API_BASE
         API_BASE = api_url
-    
+
     code = get_code(file)
     filename = Path(file).name
     check_api()
@@ -188,11 +201,17 @@ def run(ctx, file, api_url, override):
 
     status = data["status"]
     if status == "success":
-        click.secho(f"\n{click.style('SUCCESS', fg='green', bold=True)} Executed in {data['execution_time']:.3f}s")
+        click.secho(
+            f"\n{click.style('SUCCESS', fg='green', bold=True)} Executed in {data['execution_time']:.3f}s"
+        )
     elif status == "timeout":
-        click.secho(f"\n{click.style('TIMEOUT', fg='yellow', bold=True)} Execution exceeded time limit.")
+        click.secho(
+            f"\n{click.style('TIMEOUT', fg='yellow', bold=True)} Execution exceeded time limit."
+        )
     else:
-        click.secho(f"\n{click.style('ERROR', fg='red', bold=True)} Exit code: {data['exit_code']}")
+        click.secho(
+            f"\n{click.style('ERROR', fg='red', bold=True)} Exit code: {data['exit_code']}"
+        )
 
     if data.get("stdout"):
         click.echo(f"\n{click.style('stdout:', bold=True)}")
@@ -213,7 +232,7 @@ def history(ctx, api_url):
     if api_url:
         global API_BASE
         API_BASE = api_url
-    
+
     check_api()
 
     try:
@@ -231,7 +250,12 @@ def history(ctx, api_url):
     click.echo(f"\n{'ID':<5} {'Risk':<8} {'Status':<10} {'Time':<8} {'Date'}")
     click.echo("-" * 55)
     for r in records[:20]:
-        risk_color = {"LOW": "green", "MEDIUM": "yellow", "HIGH": "red", "BLOCKED": "red"}
+        risk_color = {
+            "LOW": "green",
+            "MEDIUM": "yellow",
+            "HIGH": "red",
+            "BLOCKED": "red",
+        }
         risk = r["risk_level"]
         click.echo(
             f"{r['id']:<5} "

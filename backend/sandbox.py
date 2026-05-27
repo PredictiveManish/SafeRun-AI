@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 import docker
 from docker.errors import DockerException, ImageNotFound, APIError
+
 logger = logging.getLogger(__name__)
 
 
@@ -208,9 +209,7 @@ class SandboxExecutor:
                 # Build from included Dockerfile
                 sandbox_dir = Path(__file__).parent.parent.parent / "sandbox_image"
                 self.docker_client.images.build(
-                    path=str(sandbox_dir),
-                    tag=self.image_name,
-                    rm=True
+                    path=str(sandbox_dir), tag=self.image_name, rm=True
                 )
                 return True
             except Exception as e:

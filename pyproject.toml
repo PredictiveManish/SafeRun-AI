@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "saferun-ai"
-version = "0.1.1"
+version = "2.0.0"
 description = "Secure sandbox execution for AI-generated Python code"
 readme = "README.md"
 requires-python = ">=3.11"

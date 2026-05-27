@@ -35,7 +35,10 @@ We assume the attacker (or the AI model) can generate arbitrary Python code. The
 - Resource exhaustion – CPU/memory/disk DoS
 - Privilege escalation – breaking out of the container to the host
 
-**Note:** This is not a perfect sandbox (see Limitations). It is a layered defense suitable for local development.
+Current limitations:
+- Kernel-level escapes
+- Privileged container exploits
+- Network-based attacks
 
 ---
 

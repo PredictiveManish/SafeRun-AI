@@ -5,6 +5,7 @@ Utility functions for backend.
 import hashlib
 import re
 
+
 def hash_code(code: str) -> str:
     """Return SHA256 hash of code string."""
     return hashlib.sha256(code.encode()).hexdigest()

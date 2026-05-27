@@ -160,18 +160,13 @@ class CodeScanner:
                 path = node.value
                 for susp in SUSPICIOUS_PATHS:
                     if susp in path and len(path) > 3:
-                        warnings.append(
-                            f"Suspicious path reference: {path[:50]}"
-                        )
+                        warnings.append(f"Suspicious path reference: {path[:50]}")
                         patterns.append("suspicious_path")
                         risk_score += 1
 
             # Detect infinite loop candidates (while True with no break detection is heuristic)
             if isinstance(node, ast.While):
-                if (
-                    isinstance(node.test, ast.Constant)
-                    and node.test.value is True
-                ):
+                if isinstance(node.test, ast.Constant) and node.test.value is True:
                     # Check for break/return inside body (simplistic)
                     has_exit = any(
                         isinstance(sub, (ast.Break, ast.Return))
