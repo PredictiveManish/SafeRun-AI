@@ -233,7 +233,7 @@
 </head>
 <body>
   <aside class="sidebar">
-    <div class="logo">[SHIELD] <span>SafeRun</span> AI</div>
+    <div class="logo"><span>SafeRun</span> AI</div>
     
     <div class="sidebar-section">
       <h3>Backend Status</h3>
@@ -272,12 +272,12 @@
     <div class="header">
       <h1>Run AI‑generated code safely</h1>
       <div class="button-group">
-        <button class="btn-secondary" onclick="clearAll()">[CLEAR] Clear</button>
+        <button class="btn-secondary" onclick="clearAll()"> Clear</button>
          <button class="btn-primary" onclick="scanCode()" id="scanBtn">
-           [SEARCH] Scan Only
+           Scan Only
          </button>
          <button class="btn-primary" onclick="executeCode()" id="executeBtn">
-           [PLAY] Execute in Sandbox
+           Execute in Sandbox
          </button>
       </div>
     </div>
@@ -300,7 +300,7 @@ print(f"fib(10) = {fibonacci(10)}")</textarea>
 
     <div id="resultArea"></div>
 
-    <h2 style="margin-top:2rem; margin-bottom:1rem;">[HISTORY] Execution History</h2>
+    <h2 style="margin-top:2rem; margin-bottom:1rem;">Execution History</h2>
     <button class="btn-secondary" onclick="loadHistory()" style="margin-bottom:1rem;">
       🔄 Refresh History
     </button>
@@ -375,7 +375,7 @@ print(f"fib(10) = {fibonacci(10)}")</textarea>
     }
 
     function renderScanResult(data) {
-       const blocked = data.blocked ? '[BLOCKED] Blocked' : '[SUCCESS] Allowed';
+       const blocked = data.blocked ? 'Blocked' : 'Allowed';
       const html = `
         <div class="result-card">
           <div class="flex-row" style="justify-content:space-between; margin-bottom:1rem;">
