@@ -74,6 +74,7 @@ def test_policy_engine_check_code():
             blocked=True,
             warnings=["Dangerous import: os"],
             detected_patterns=["import_os"],
+            detected_imports=["os"],
         )
 
         violations = engine.check_code("import os", scan_result)
@@ -95,6 +96,7 @@ def test_policy_engine_check_code_no_violations():
             blocked=False,
             warnings=[],
             detected_patterns=["import_math"],
+            detected_imports=[],
         )
 
         violations = engine.check_code("import math", scan_result)
