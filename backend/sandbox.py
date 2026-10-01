@@ -11,6 +11,7 @@ from typing import Optional
 from dataclasses import dataclass
 
 import docker
+import requests
 from docker.errors import DockerException, ImageNotFound, APIError
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,45 @@ class SandboxExecutor:
                     container_status="completed",
                 )
 
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                # container.wait(timeout=...) raises a requests timeout when
+                # the container exceeds the limit (the wait is a long-poll
+                # HTTP request). The finally-block force-removes the still
+                # running container, so the code is killed at the limit.
+                message = str(e).lower()
+                is_timeout = isinstance(e, requests.exceptions.Timeout) or (
+                    "timed out" in message or "read timed out" in message
+                )
+                execution_time = time.time() - start_time
+                # Best-effort capture of partial stdout before removal
+                partial_stdout = ""
+                if container:
+                    try:
+                        partial_stdout = container.logs(
+                            stdout=True, stderr=False
+                        ).decode("utf-8", errors="replace")
+                    except Exception:
+                        pass
+                if is_timeout:
+                    return ExecutionResult(
+                        status="timeout",
+                        stdout=partial_stdout,
+                        stderr=(
+                            f"Execution timed out after {timeout_seconds}s "
+                            "and was terminated."
+                        ),
+                        exit_code=-1,
+                        execution_time=execution_time,
+                        container_status="timeout_killed",
+                    )
+                return ExecutionResult(
+                    status="error",
+                    stdout=partial_stdout,
+                    stderr=f"Docker connection error: {str(e)}",
+                    exit_code=-1,
+                    execution_time=execution_time,
+                    container_status="connection_error",
+                )
             except docker.errors.ContainerError as e:
                 execution_time = time.time() - start_time
                 return ExecutionResult(

@@ -43,4 +43,7 @@ blocked_calls:
   - os.removedirs
   - shutil.rmtree
   - shutil.move
-  - open
+# NOTE: "open" is intentionally NOT in blocked_calls. Write-mode open() is
+# reported by the scanner as "file_write" and governed by
+# filesystem_write_enabled above; read-mode open() is not dangerous (the
+# sandbox root filesystem is read-only).

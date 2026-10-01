@@ -216,3 +216,71 @@ saferun-ai/
 Disclaimer
 No sandbox is completely secure. Running untrusted code always carries residual risk. Always review AI-generated code before execution, even when using this tool. The authors are not liable for any damages arising from its use.
 ```
+---
+
+## Using SafeRun as an MCP Server (Agent Integration)
+
+SafeRun ships as a **Model Context Protocol (MCP) server**, so any MCP-capable
+agent client — Claude Desktop, Claude Code, Cursor, VS Code Copilot, or your own
+agent built on any MCP-compatible framework — can use SafeRun as its secure
+Python execution tool. The agent never runs code on your host directly: every
+snippet goes through `AST scan -> policy check -> Docker sandbox -> audit log`.
+
+### Install
+
+```bash
+pip install "saferun-ai[mcp]"          # or: pip install mcp docker pyyaml sqlalchemy
+```
+
+### Run
+
+```bash
+python saferun_mcp.py                   # stdio transport (what MCP clients expect)
+```
+
+### Register with a client (e.g. Claude Desktop / Cursor)
+
+```json
+{
+  "mcpServers": {
+    "saferun": {
+      "command": "python",
+      "args": ["/absolute/path/to/saferun_mcp.py"]
+    }
+  }
+}
+```
+
+### Tools exposed
+
+| Tool           | What it does                                                                 |
+|----------------|------------------------------------------------------------------------------|
+| `scan_code`    | Static security scan — risk level, warnings, policy violations. No execution. |
+| `execute_code` | Runs a snippet in the hardened sandbox after scan + policy. Refuses blocked code. |
+| `get_history` | Recent executions from the audit log.                                         |
+
+### Security notes for agent use
+
+- The `execute_code` tool has **no override flag** — an agent cannot bypass
+  a blocked scan the way a human can via the REST API's `override=true`.
+- Read-mode `open()` is allowed (the sandbox rootfs is read-only anyway);
+  write-mode is governed by `filesystem_write_enabled` in the policy.
+- Works with both MCP SDK v1 (`FastMCP`) and v2 (`MCPServer`).
+
+## Security Fixes (this version)
+
+- **Policy engine missed `from X import Y` violations** — the pattern parser
+  split `import_from_X` on the first underscore, yielding `from_X`, which never
+  matched `blocked_imports`. The policy now consumes exact-match fields
+  (`detected_imports`, `detected_calls`) from the scanner.
+- **Aliasing bypass in the scanner** — `f = eval; f("...")` previously slipped
+  past `DANGEROUS_CALLS` because only `ast.Call` nodes were inspected. The
+  scanner now tracks dangerous aliases in a first pass, and also catches
+  `getattr(__builtins__, "ev" + "al")` (constant-folded string bypasses).
+  `import builtins` is flagged as a dangerous import.
+- **`open()` in read mode is no longer auto-blocked** — only write mode sets
+  the `file_write` pattern; `filesystem_write_enabled` in the policy governs it.
+- **Timeouts are now reported as `status="timeout"`** (previously surfaced as a
+  generic error), with partial stdout captured before the container is killed.
+- **CORS fixed** — `allow_credentials=True` with `allow_origins=["*"]` is
+  invalid per the CORS spec; credentials are now disabled.

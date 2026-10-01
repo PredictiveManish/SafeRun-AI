@@ -57,10 +57,13 @@ app = FastAPI(
 )
 
 # CORS for frontend access
+# NOTE: allow_origins=["*"] combined with allow_credentials=True is an
+# invalid combination per the CORS spec (credentials require explicit
+# origins). Credentials are not used by this API, so they are disabled.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

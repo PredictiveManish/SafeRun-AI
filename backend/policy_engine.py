@@ -6,7 +6,7 @@ Integrates with scanner results and code.
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any
-from backend.scanner import ScanResult
+from backend.scanner import ScanResult, NETWORK_MODULES
 
 
 class PolicyEngine:
@@ -67,6 +67,13 @@ class PolicyEngine:
         """
         Check code against policy rules.
         Returns list of policy violation descriptions.
+
+        Uses the scanner's exact-match fields (detected_imports,
+        detected_calls) instead of re-parsing pattern strings. The old
+        pattern parsing had a bug: for `from X import Y` the pattern is
+        "import_from_X", and splitting on the first underscore yielded
+        "from_X", which never matched blocked_imports — so from-import
+        violations were silently missed.
         """
         violations = []
 
@@ -77,26 +84,21 @@ class PolicyEngine:
                 f"Code size exceeds policy limit: {code_size_kb:.1f} KB > {self.policy['max_code_size_kb']} KB"
             )
 
-        # Blocked imports from scanner patterns
-        for pattern in scan_result.detected_patterns:
-            if pattern.startswith("import_") or pattern.startswith("import_from_"):
-                import_name = pattern.split("_", 1)[-1]
-                if import_name in self.policy["blocked_imports"]:
-                    violations.append(f"Blocked import: {import_name}")
+        # Blocked imports (exact match on module roots, covers both
+        # `import X` and `from X import Y`)
+        for import_name in scan_result.detected_imports:
+            if import_name in self.policy["blocked_imports"]:
+                violations.append(f"Blocked import: {import_name}")
 
-        # Blocked calls
-        for pattern in scan_result.detected_patterns:
-            if pattern.startswith("call_"):
-                call_name = pattern[5:].replace("_", ".")
-                for blocked in self.policy["blocked_calls"]:
-                    if blocked == call_name or call_name.endswith(blocked):
-                        violations.append(f"Blocked call: {call_name}")
+        # Blocked calls (exact dotted-name match; no endswith matching,
+        # which previously caused false positives like my_eval)
+        for call_name in scan_result.detected_calls:
+            if call_name in self.policy["blocked_calls"]:
+                violations.append(f"Blocked call: {call_name}")
 
         # Check network policy
         if not self.policy["network_enabled"] and any(
-            pat.startswith("import_")
-            and pat in ["import_socket", "import_requests", "import_urllib"]
-            for pat in scan_result.detected_patterns
+            import_name in NETWORK_MODULES for import_name in scan_result.detected_imports
         ):
             violations.append(
                 "Network access is disabled by policy but code imports networking module"
