@@ -137,7 +137,6 @@ class ExplanationGenerator:
         scan_result: ScanResult,
         violations: List[str],
     ) -> str:
-        code_snippet = (code or "")[:500].strip() or "(empty)"
         violations_str = ", ".join(violations) if violations else "None"
         warnings_str = (
             ", ".join(scan_result.warnings) if scan_result.warnings else "None"
@@ -148,6 +147,7 @@ class ExplanationGenerator:
             else "None"
         )
 
+        code_snippet = (code or "")[:500].strip() or "(empty)"
         prompt = f"""You are a security expert reviewing AI-generated code.
 Explain the following static analysis results in a concise paragraph (3-5 sentences) for a developer.
 
@@ -172,7 +172,6 @@ Respond in language: {self.language}"""
         exec_result: ExecutionResult,
         violations: List[str],
     ) -> str:
-        code_snippet = (code or "")[:500].strip() or "(empty)"
         violations_str = ", ".join(violations) if violations else "None"
         warnings_str = (
             ", ".join(scan_result.warnings) if scan_result.warnings else "None"
@@ -323,8 +322,8 @@ Respond in language: {self.language}"""
 
         if exec_result.status == "timeout":
             return (
-                f"[TIMEOUT] Execution timed out. The code may contain an infinite loop "
-                f"or unexpectedly heavy computation. Review any loops and I/O calls."
+                "[TIMEOUT] Execution timed out. The code may contain an infinite loop "
+                "or unexpectedly heavy computation. Review any loops and I/O calls."
             )
 
         if exec_result.status == "error":

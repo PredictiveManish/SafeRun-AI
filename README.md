@@ -57,6 +57,38 @@ Current limitations:
 
 ---
 
+## API authentication
+
+Every endpoint that scans, executes or reads history requires an API key.
+The container is the security boundary; the key is what stops strangers from
+using it.
+
+```bash
+# generate one
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# configure it
+export SAFERUN_API_KEYS=<the-key>
+
+# use it
+curl -H "X-API-Key: <the-key>" -X POST localhost:8000/scan \
+     -H 'Content-Type: application/json' -d '{"code": "print(1)"}'
+```
+
+- `SAFERUN_API_KEYS` — comma separated list; rotate without downtime by adding
+  a second key before removing the first.
+- `SAFERUN_ADMIN_KEY` — a separate, stronger key. `override: true` on code the
+  policy engine blocked is refused unless the request also carries
+  `X-Admin-Key` matching this value. Leave it unset to disable overrides.
+- `SAFERUN_ALLOW_ANONYMOUS=1` — escape hatch for a throwaway local instance.
+  Never on a public host.
+- If no key is configured the API answers 503 rather than serving openly.
+
+Deployment details, including why this cannot run on a service without a
+Docker daemon, are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+---
+
 ## Features
 
 - Execute untrusted Python in isolated Docker sandbox

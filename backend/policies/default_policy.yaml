@@ -2,6 +2,8 @@ max_execution_time_seconds: 10
 max_memory_mb: 256
 max_cpu_cores: 1
 max_code_size_kb: 100
+# Cap on captured stdout/stderr per execution (bytes).
+max_output_bytes: 65536
 network_enabled: false
 filesystem_write_enabled: false
 allowed_imports:
