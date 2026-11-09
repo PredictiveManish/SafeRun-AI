@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import docker
 import requests
-from docker.errors import DockerException, ImageNotFound, APIError
+from docker.errors import DockerException, ImageNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,24 @@ class ExecutionResult:
     exit_code: Optional[int]
     execution_time: float
     container_status: str
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
+
+
+def cap_output(text: str, limit: int) -> tuple[str, bool]:
+    """Truncate captured output to `limit` bytes.
+
+    A program that prints in a loop can otherwise exhaust the API's memory
+    and the audit table. Truncation is reported back to the caller instead of
+    being silent.
+    """
+    if limit <= 0:
+        return text, False
+    raw = text.encode("utf-8", "ignore")
+    if len(raw) <= limit:
+        return text, False
+    kept = raw[:limit].decode("utf-8", "ignore")
+    return kept + f"\n...[output truncated at {limit} bytes]", True
 
 
 class SandboxExecutor:
@@ -55,6 +73,7 @@ class SandboxExecutor:
         cpu_cores: float = 1.0,
         network_enabled: bool = False,
         filesystem_write_enabled: bool = False,
+        max_output_bytes: int = 65536,
     ) -> ExecutionResult:
         """
         Execute code in sandbox container
@@ -147,6 +166,8 @@ class SandboxExecutor:
                 stderr_logs = container.logs(stdout=False, stderr=True).decode(
                     "utf-8", errors="replace"
                 )
+                stdout_logs, out_cut = cap_output(stdout_logs, max_output_bytes)
+                stderr_logs, err_cut = cap_output(stderr_logs, max_output_bytes)
 
                 execution_time = time.time() - start_time
                 status = "success" if exit_code == 0 else "error"
@@ -158,6 +179,8 @@ class SandboxExecutor:
                     exit_code=exit_code,
                     execution_time=execution_time,
                     container_status="completed",
+                    stdout_truncated=out_cut,
+                    stderr_truncated=err_cut,
                 )
 
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -177,6 +200,9 @@ class SandboxExecutor:
                         partial_stdout = container.logs(
                             stdout=True, stderr=False
                         ).decode("utf-8", errors="replace")
+                        partial_stdout, _ = cap_output(
+                            partial_stdout, max_output_bytes
+                        )
                     except Exception:
                         pass
                 if is_timeout:
@@ -244,10 +270,10 @@ class SandboxExecutor:
             self.docker_client.images.get(self.image_name)
             return True
         except ImageNotFound:
-            logger.info(f"Building sandbox image...")
+            logger.info("Building sandbox image...")
             try:
                 # Build from included Dockerfile
-                sandbox_dir = Path(__file__).parent.parent.parent / "sandbox_image"
+                sandbox_dir = Path(__file__).resolve().parents[1] / "sandbox_image"
                 self.docker_client.images.build(
                     path=str(sandbox_dir), tag=self.image_name, rm=True
                 )

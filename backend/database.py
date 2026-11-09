@@ -4,7 +4,7 @@ SQLAlchemy setup for SQLite.
 """
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 from backend.models import Base
 from contextlib import contextmanager
 

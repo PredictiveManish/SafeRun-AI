@@ -12,17 +12,31 @@ import requests
 from pathlib import Path
 
 
-# Smart default: env var > production URL > localhost
+# Default to the local backend. Point SAFERUN_API_URL at a remote one when
+# you have deployed it yourself.
 def get_default_api_url():
-    """Get API URL from environment or use smart defaults"""
-    env_url = os.getenv("SAFERUN_API_URL")
-    if env_url:
-        return env_url
-    # Default to localhost for now
-    return "https://saferun-ai.onrender.com"
+    """Get API URL from environment or fall back to a local backend."""
+    return os.getenv("SAFERUN_API_URL", "http://127.0.0.1:8000")
 
 
 API_BASE = get_default_api_url()
+
+
+def auth_headers():
+    """Headers for authenticated endpoints (X-API-Key when configured)."""
+    key = os.getenv("SAFERUN_API_KEY")
+    return {"X-API-Key": key} if key else {}
+
+
+def explain_auth_failure():
+    """Printed when the backend rejects the key."""
+    click.secho(
+        "\nAuthentication failed.\n"
+        "Set an API key for this backend:\n"
+        "  export SAFERUN_API_KEY=...\n"
+        "or pass --api-key. The backend needs SAFERUN_API_KEYS configured.",
+        fg="red",
+    )
 
 
 def get_code(file_path):
@@ -61,8 +75,14 @@ def check_api(api_url=None):
     default=get_default_api_url(),
     help="Backend API URL",
 )
+@click.option(
+    "--api-key",
+    envvar="SAFERUN_API_KEY",
+    default=None,
+    help="API key for the backend (sent as X-API-Key).",
+)
 @click.pass_context
-def cli(ctx, file, api_url):
+def cli(ctx, file, api_url, api_key):
     """
     SafeRun AI - Security check for Python files.
 
@@ -106,7 +126,12 @@ def check(ctx, file, api_url):
     click.echo(f"Checking {filename}...")
 
     try:
-        resp = requests.post(f"{API_BASE}/scan", json={"code": code}, timeout=10)
+        resp = requests.post(
+            f"{API_BASE}/scan", json={"code": code}, headers=auth_headers(), timeout=10
+        )
+        if resp.status_code in (401, 403, 503):
+            explain_auth_failure()
+            sys.exit(1)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
@@ -138,7 +163,7 @@ def check(ctx, file, api_url):
         for w in warnings:
             click.secho(f"  • {w}", fg="red")
         if violations:
-            click.echo(f"\nPolicy violations:")
+            click.echo("\nPolicy violations:")
             for v in violations:
                 click.secho(f"  • {v}", fg="red")
         click.echo(f"\n{data.get('explanation', '')}")
@@ -150,7 +175,7 @@ def check(ctx, file, api_url):
         for w in warnings:
             click.secho(f"  • {w}", fg="red")
         if violations:
-            click.echo(f"\nPolicy violations:")
+            click.echo("\nPolicy violations:")
             for v in violations:
                 click.secho(f"  • {v}", fg="red")
         click.echo(f"\n{data.get('explanation', '')}")
@@ -160,9 +185,14 @@ def check(ctx, file, api_url):
 @cli.command()
 @click.argument("file", type=click.Path())
 @click.option("--api-url", envvar="SAFERUN_API_URL", hidden=True)
-@click.option("--override", is_flag=True, help="Override safety blocks")
+@click.option(
+    "--override",
+    is_flag=True,
+    help="Ask the server to override a block (needs an admin key).",
+)
+@click.option("--api-key", envvar="SAFERUN_API_KEY", default=None, help="API key.")
 @click.pass_context
-def run(ctx, file, api_url, override):
+def run(ctx, file, api_url, override, api_key):
     """Execute a Python file in the sandbox."""
     if api_url:
         global API_BASE
@@ -181,15 +211,20 @@ def run(ctx, file, api_url, override):
         resp = requests.post(
             f"{API_BASE}/execute",
             json={"code": code, "override": override},
+            headers=auth_headers(),
             timeout=30,
         )
+        if resp.status_code in (401, 503):
+            explain_auth_failure()
+            sys.exit(1)
         resp.raise_for_status()
         data = resp.json()
     except requests.HTTPError as e:
-        if e.response.status_code == 403:
+        if e.response is not None and e.response.status_code == 403:
             click.secho(
                 "\nExecution blocked by security policy.\n"
-                "Use --override to force execution at your own risk.",
+                "Overriding a block is an operator action: it needs an admin key "
+                "on the server (SAFERUN_ADMIN_KEY) and --override here.",
                 fg="red",
             )
             sys.exit(1)
@@ -226,8 +261,9 @@ def run(ctx, file, api_url, override):
 
 @cli.command()
 @click.option("--api-url", envvar="SAFERUN_API_URL", hidden=True)
+@click.option("--api-key", envvar="SAFERUN_API_KEY", default=None, help="API key.")
 @click.pass_context
-def history(ctx, api_url):
+def history(ctx, api_url, api_key):
     """Show recent execution history."""
     if api_url:
         global API_BASE
@@ -236,7 +272,10 @@ def history(ctx, api_url):
     check_api()
 
     try:
-        resp = requests.get(f"{API_BASE}/history", timeout=5)
+        resp = requests.get(f"{API_BASE}/history", headers=auth_headers(), timeout=5)
+        if resp.status_code in (401, 403, 503):
+            explain_auth_failure()
+            sys.exit(1)
         resp.raise_for_status()
         records = resp.json()
     except Exception as e:

@@ -39,7 +39,8 @@ jobs:
       - name: Lint check
         run: |
           pip install flake8
-          flake8 backend/ cli/ --count --max-complexity=10 --statistics
+          # Style and complexity limits live in .flake8
+          flake8 backend/ cli/ --count --statistics
 
   # ============ BUILD SANDOX IMAGE ============
   build-sandbox:

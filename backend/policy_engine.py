@@ -23,6 +23,7 @@ class PolicyEngine:
             "max_memory_mb": 256,
             "max_cpu_cores": 1,
             "max_code_size_kb": 100,
+            "max_output_bytes": 65536,
             "network_enabled": False,
             "filesystem_write_enabled": False,
             "allowed_imports": ["math", "random", "datetime", "json", "re"],
@@ -80,8 +81,9 @@ class PolicyEngine:
         # Code size check
         code_size_kb = len(code.encode("utf-8")) / 1024
         if code_size_kb > self.policy["max_code_size_kb"]:
+            limit = self.policy["max_code_size_kb"]
             violations.append(
-                f"Code size exceeds policy limit: {code_size_kb:.1f} KB > {self.policy['max_code_size_kb']} KB"
+                f"Code size exceeds policy limit: {code_size_kb:.1f} KB > {limit} KB"
             )
 
         # Blocked imports (exact match on module roots, covers both
@@ -120,6 +122,9 @@ class PolicyEngine:
 
     def get_max_memory_mb(self) -> int:
         return self.policy.get("max_memory_mb", 256)
+
+    def get_max_output_bytes(self) -> int:
+        return int(self.policy.get("max_output_bytes", 65536))
 
     def get_max_cpu_cores(self) -> float:
         return float(self.policy.get("max_cpu_cores", 1))

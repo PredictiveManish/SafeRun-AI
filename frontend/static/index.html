@@ -242,6 +242,18 @@
         <span>Checking...</span>
       </div>
     </div>
+
+    <div class="sidebar-section">
+      <h3>API Key</h3>
+      <input id="apiKeyInput" type="password" placeholder="X-API-Key"
+             autocomplete="off" oninput="saveApiKey()"
+             style="width:100%; padding:0.45rem 0.55rem; border-radius:6px;
+                    border:1px solid #334155; background:#0f172a; color:#e2e8f0;
+                    font-size:0.85rem;">
+      <div style="font-size:0.72rem; color:#64748b; margin-top:0.4rem;">
+        Required by the backend. Stored in this browser only.
+      </div>
+    </div>
     
     <div class="sidebar-section">
       <h3>Active Policy</h3>
@@ -314,6 +326,28 @@ print(f"fib(10) = {fibonacci(10)}")</textarea>
       ? 'http://localhost:8000'
       : window.location.origin;
 
+    // ---- authentication ---------------------------------------------------
+    // The backend refuses /scan, /execute and /history without an API key.
+    function apiKey() {
+      return (localStorage.getItem('saferun_api_key') || '').trim();
+    }
+    function authHeaders(withJson = true) {
+      const headers = withJson ? {'Content-Type': 'application/json'} : {};
+      const key = apiKey();
+      if (key) headers['X-API-Key'] = key;
+      return headers;
+    }
+    function saveApiKey() {
+      const el = document.getElementById('apiKeyInput');
+      if (el) localStorage.setItem('saferun_api_key', el.value.trim());
+    }
+    function loadApiKey() {
+      const el = document.getElementById('apiKeyInput');
+      if (el) el.value = apiKey();
+    }
+    const AUTH_ERROR = 'API key required. Enter it in the sidebar.';
+    loadApiKey();
+
     // Check backend on load
     checkBackend();
 
@@ -361,9 +395,10 @@ print(f"fib(10) = {fibonacci(10)}")</textarea>
       try {
         const resp = await fetch(`${API_BASE}/scan`, {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: authHeaders(),
           body: JSON.stringify({code})
         });
+        if (resp.status === 401 || resp.status === 503) throw new Error(AUTH_ERROR);
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.detail || 'Scan failed');
         renderScanResult(data);
@@ -425,9 +460,10 @@ print(f"fib(10) = {fibonacci(10)}")</textarea>
       try {
         const resp = await fetch(`${API_BASE}/execute`, {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: authHeaders(),
           body: JSON.stringify({code, override})
         });
+        if (resp.status === 401 || resp.status === 503) throw new Error(AUTH_ERROR);
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.detail || 'Execution failed');
         renderExecResult(data);
@@ -485,7 +521,11 @@ print(f"fib(10) = {fibonacci(10)}")</textarea>
       area.innerHTML = '<div class="loading"><div class="spinner"></div> Loading history...</div>';
       
       try {
-        const resp = await fetch(`${API_BASE}/history`);
+        const resp = await fetch(`${API_BASE}/history`, {headers: authHeaders(false)});
+        if (resp.status === 401 || resp.status === 503) {
+          area.innerHTML = '<p style="color:#f59e0b;">' + AUTH_ERROR + '</p>';
+          return;
+        }
         const data = await resp.json();
         if (data.length === 0) {
           area.innerHTML = '<p style="color:#94a3b8;">No executions yet. Try running some code!</p>';

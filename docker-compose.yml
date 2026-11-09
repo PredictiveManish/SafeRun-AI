@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -8,23 +6,22 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./saferun.db
+      - DATABASE_URL=sqlite:////app/data/saferun.db
       - SANDBOX_IMAGE=saferun-sandbox:latest
       - SARVAM_API_KEY=${SARVAM_API_KEY:-}
+      # Comma separated list of accepted API keys. Generate one with:
+      #   python -c "import secrets; print(secrets.token_urlsafe(32))"
+      # Without this the API refuses /scan, /execute and /history.
+      - SAFERUN_API_KEYS=${SAFERUN_API_KEYS:-}
+      # Needed only to run blocked code with override=true.
+      - SAFERUN_ADMIN_KEY=${SAFERUN_ADMIN_KEY:-}
+      - SAFERUN_MAX_CONCURRENT=${SAFERUN_MAX_CONCURRENT:-4}
+      - SAFERUN_MAX_OUTPUT_BYTES=${SAFERUN_MAX_OUTPUT_BYTES:-65536}
     volumes:
-      - ./saferun.db:/app/saferun.db
-      - /var/run/docker.sock:/var/run/docker.sock   # Needed to spawn sandbox containers
-      - ./reports:/app/reports
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8501:8501"
-    environment:
-      - BACKEND_URL=http://backend:8000
-    depends_on:
-      - backend
+      - ./data:/app/data
+      # Required so the backend can spawn sandbox containers. This gives the
+      # container root-equivalent control of the host Docker daemon: run it
+      # only on a host you control, and never publish port 8000 without an
+      # API key.
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped

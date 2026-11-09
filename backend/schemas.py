@@ -34,6 +34,8 @@ class ExecuteResponse(BaseModel):
     blocked: bool
     stdout: str
     stderr: str
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
     warnings: List[str]
     execution_time: float
     exit_code: Optional[int]
