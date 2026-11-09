@@ -1,0 +1,8 @@
+[flake8]
+# The codebase is written to ~100 columns; the default 79 produces noise that
+# hides real problems. Complexity ceiling matches the AST scanner, which is
+# intentionally a long sequence of checks.
+max-line-length = 110
+max-complexity = 40
+extend-ignore = E203, W503
+exclude = .git,__pycache__,build,dist,.venv,site
